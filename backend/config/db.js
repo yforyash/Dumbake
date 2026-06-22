@@ -36,9 +36,7 @@ if (pool) {
 // A robust mock data state for when Postgres is not running or credentials are wrong
 const mockState = {
   users: [
-    { id: 1, name: 'Dumbake Admin', email: 'admin@dumbake.com', password_hash: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', role: 'admin', wallet_balance: 5000.00 },
-    { id: 2, name: 'Bakery Owner', email: 'owner@dumbake.com', password_hash: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', role: 'bakery_owner', wallet_balance: 2500.00 },
-    { id: 3, name: 'Yash Customer', email: 'customer@dumbake.com', password_hash: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', role: 'user', wallet_balance: 1000.00 }
+    { id: 1, name: 'Ishika (Owner)', email: 'admin@dumbake.com', password_hash: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', role: 'admin', wallet_balance: 5000.00, is_verified: true, verification_code: null }
   ],
   bakery_items: [
     { id: 1, name: 'Dumbake Signature Fudgy Brookies', description: 'A heavenly, soft-baked fusion of a chocolate chip cookie and a rich fudgy brownie. Dumbake\'s original crowd-pleaser!', price: 150.00, category: 'Brookies', image_url: '/dumbake_brookies.png', is_eggless: true, is_bestseller: true, stock_quantity: 20, status: 'available' },
@@ -113,16 +111,55 @@ function runMockQuery(text, params) {
   // 3. INSERT INTO users
   if (norm.includes('insert into users')) {
     const [name, email, passwordHash, role] = params;
+    const code = params.length > 4 ? params[params.length - 1] : null;
     const newUser = {
       id: mockState.users.length + 1,
       name,
       email,
       password_hash: passwordHash,
       role: role || 'user',
-      wallet_balance: 1000.00
+      wallet_balance: 1000.00,
+      is_verified: false,
+      verification_code: code
     };
     mockState.users.push(newUser);
     return { rows: [newUser] };
+  }
+
+  // 3b. UPDATE users (verification)
+  if (norm.includes('update users') && norm.includes('is_verified')) {
+    const email = params[params.length - 1];
+    const user = mockState.users.find(u => u.email === email);
+    if (user) {
+      user.is_verified = true;
+    }
+    return { rows: user ? [user] : [] };
+  }
+
+  // 3c. UPDATE bakery_items
+  if (norm.includes('update bakery_items')) {
+    const id = params[params.length - 1];
+    const item = mockState.bakery_items.find(i => i.id === parseInt(id));
+    if (item) {
+      const [name, description, price, category, image_url, is_eggless, is_bestseller, stock_quantity, status] = params;
+      if (name !== null && name !== undefined) item.name = name;
+      if (description !== null && description !== undefined) item.description = description;
+      if (price !== null && price !== undefined) item.price = parseFloat(price);
+      if (category !== null && category !== undefined) item.category = category;
+      if (image_url !== null && image_url !== undefined) item.image_url = image_url;
+      if (is_eggless !== null && is_eggless !== undefined) item.is_eggless = is_eggless;
+      if (is_bestseller !== null && is_bestseller !== undefined) item.is_bestseller = is_bestseller;
+      if (stock_quantity !== null && stock_quantity !== undefined) item.stock_quantity = parseInt(stock_quantity);
+      if (status !== null && status !== undefined) item.status = status;
+    }
+    return { rows: item ? [item] : [] };
+  }
+
+  // 3d. DELETE FROM bakery_items
+  if (norm.includes('delete from bakery_items')) {
+    const id = params[0];
+    mockState.bakery_items = mockState.bakery_items.filter(i => i.id !== parseInt(id));
+    return { rows: [] };
   }
 
   // 4. INSERT INTO orders

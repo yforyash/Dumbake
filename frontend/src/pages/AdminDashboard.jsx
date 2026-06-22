@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { 
   fetchOrders, fetchItems, fetchReviews, updateOrderStatus, addBakeryItem, 
@@ -183,6 +184,10 @@ export default function AdminDashboard({ user }) {
     Revenue: categoryRevenue[cat]
   }));
 
+  if (!user || user.role !== 'admin') {
+    return null;
+  }
+
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '5rem' }}>Loading Admin panel...</div>;
   }
@@ -198,6 +203,20 @@ export default function AdminDashboard({ user }) {
           <Plus size={16} /> Create Bakery Item
         </button>
       </div>
+
+      {success && (
+        <div className="badge-eggless" style={{ padding: '10px 15px', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem' }}>
+          <span>{success}</span>
+          <button onClick={() => setSuccess('')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', color: 'inherit' }}>✕</button>
+        </div>
+      )}
+
+      {error && (
+        <div className="badge-egg" style={{ padding: '10px 15px', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem' }}>
+          <span>{error}</span>
+          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', color: 'inherit' }}>✕</button>
+        </div>
+      )}
 
       <div className="dashboard-grid">
         {/* Left Side: Sidebar tabs */}
@@ -427,7 +446,29 @@ export default function AdminDashboard({ user }) {
                         </div>
                       </td>
                       <td>{item.category}</td>
-                      <td style={{ fontWeight: '700' }}>₹{item.price}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>₹</span>
+                          <input 
+                            type="number" 
+                            defaultValue={item.price} 
+                            onBlur={async (e) => {
+                              const newPrice = parseFloat(e.target.value);
+                              if (!isNaN(newPrice) && newPrice !== parseFloat(item.price)) {
+                                try {
+                                  await updateBakeryItem(item.id, { price: newPrice });
+                                  setSuccess(`Price for "${item.name}" updated successfully to ₹${newPrice.toFixed(2)}`);
+                                  loadData();
+                                } catch (err) {
+                                  setError('Failed to update price: ' + err.message);
+                                }
+                              }
+                            }}
+                            className="form-input" 
+                            style={{ width: '80px', padding: '4px 8px', fontSize: '0.85rem', display: 'inline-block' }} 
+                          />
+                        </div>
+                      </td>
                       <td>{item.stock_quantity} units</td>
                       <td>
                         <span className={`status-pill ${item.status === 'available' ? 'status-ready' : 'status-cancelled'}`}>
@@ -530,7 +571,7 @@ export default function AdminDashboard({ user }) {
       </div>
 
       {/* CREATE / EDIT ITEM DIALOG MODAL */}
-      {isModalOpen && (
+      {isModalOpen && createPortal(
         <div className="dialog-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="dialog-content" onClick={(e) => e.stopPropagation()}>
             <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', fontFamily: 'var(--font-serif)' }}>
@@ -657,7 +698,8 @@ export default function AdminDashboard({ user }) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

@@ -80,8 +80,8 @@ router.get('/', authenticate, async (req, res) => {
     }
 
     let result;
-    if (req.user.role === 'admin' || req.user.role === 'bakery_owner') {
-      // Admin and owner see all orders
+    if (req.user.role === 'admin') {
+      // Admin sees all orders
       result = await query('SELECT * FROM orders ORDER BY created_at DESC');
     } else {
       // Regular customer sees only their own orders
@@ -94,8 +94,8 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-// Update order status (Admin & Owner only)
-router.put('/:id/status', authenticate, requireRole(['admin', 'bakery_owner']), async (req, res) => {
+// Update order status (Admin only)
+router.put('/:id/status', authenticate, requireRole(['admin']), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, payment_status } = req.body;
@@ -151,8 +151,8 @@ router.post('/bulk-enquiry', async (req, res) => {
   }
 });
 
-// Get all bulk enquiries (Admin/Owner only)
-router.get('/bulk-enquiries', authenticate, requireRole(['admin', 'bakery_owner']), async (req, res) => {
+// Get all bulk enquiries (Admin only)
+router.get('/bulk-enquiries', authenticate, requireRole(['admin']), async (req, res) => {
   try {
     const result = await query('SELECT * FROM bulk_enquiries ORDER BY created_at DESC');
     res.json(result.rows);

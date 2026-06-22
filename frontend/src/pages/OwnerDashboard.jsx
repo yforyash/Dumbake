@@ -78,6 +78,10 @@ export default function OwnerDashboard({ user }) {
   const activeOrders = orders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled');
   const finishedOrders = orders.filter(o => o.status === 'Delivered' || o.status === 'Cancelled');
 
+  if (!user || user.role !== 'admin') {
+    return null;
+  }
+
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '5rem' }}>Loading Owner Dashboard...</div>;
   }

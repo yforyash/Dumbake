@@ -136,7 +136,6 @@ export default function App() {
               element={
                 user ? (
                   user.role === 'admin' ? <Navigate to="/admin-dashboard" /> :
-                  user.role === 'bakery_owner' ? <Navigate to="/owner-dashboard" /> :
                   <Navigate to="/" />
                 ) : (
                   <Auth onLoginSuccess={handleLoginSuccess} />
@@ -155,8 +154,26 @@ export default function App() {
               } 
             />
 
-            <Route path="/admin-dashboard" element={<AdminDashboard user={user} />} />
-            <Route path="/owner-dashboard" element={<OwnerDashboard user={user} />} />
+            <Route 
+              path="/admin-dashboard" 
+              element={
+                user && user.role === 'admin' ? (
+                  <AdminDashboard user={user} />
+                ) : (
+                  <Navigate to="/login" />
+                )
+              } 
+            />
+            <Route 
+              path="/owner-dashboard" 
+              element={
+                user && user.role === 'admin' ? (
+                  <OwnerDashboard user={user} />
+                ) : (
+                  <Navigate to="/login" />
+                )
+              } 
+            />
             <Route path="/order-history" element={<OrderHistory user={user} />} />
             
             {/* Catch-all fallback */}

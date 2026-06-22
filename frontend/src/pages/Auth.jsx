@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Formik, Form, Field } from 'formik';
 import CryptoJS from 'crypto-js';
 import { ShieldAlert, CheckCircle2, Lock, Mail, User } from 'lucide-react';
-import { loginUser, registerUser, forgotPassword, resetPassword } from '../services/api';
+import { loginUser, registerUser, forgotPassword, resetPassword, verifyEmail } from '../services/api';
 
 export default function Auth({ onLoginSuccess }) {
   const navigate = useNavigate();
@@ -11,6 +11,7 @@ export default function Auth({ onLoginSuccess }) {
   const [mode, setMode] = useState('login');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [registeredEmail, setRegisteredEmail] = useState('');
 
   const queryParams = new URLSearchParams(location.search);
   const token = queryParams.get('token');
@@ -54,16 +55,18 @@ export default function Auth({ onLoginSuccess }) {
                   localStorage.setItem('dumbake_user', JSON.stringify(user));
                   onLoginSuccess(user);
                   
-                  // Redirect according to role
+                  // Redirect according to role (only admin or user)
                   if (user.role === 'admin') {
                     navigate('/admin-dashboard');
-                  } else if (user.role === 'bakery_owner') {
-                    navigate('/owner-dashboard');
                   } else {
                     navigate('/');
                   }
                 } catch (e) {
                   setError(e.message);
+                  if (e.message.includes('not verified') || e.message.includes('verification')) {
+                    setRegisteredEmail(values.email);
+                    setMode('verify');
+                  }
                 }
                 setSubmitting(false);
               }}
@@ -111,13 +114,16 @@ export default function Auth({ onLoginSuccess }) {
             <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem' }}>Join for sweet personalized bakes.</p>
             
             <Formik
-              initialValues={{ name: '', email: '', password: '', role: 'user' }}
+              initialValues={{ name: '', email: '', password: '' }}
               onSubmit={async (values, { setSubmitting }) => {
                 setError('');
+                setSuccess('');
                 try {
-                  await registerUser(values.name, values.email, hash(values.password), values.role);
-                  setSuccess('Registration successful! Please login.');
-                  setMode('login');
+                  const res = await registerUser(values.name, values.email, hash(values.password), 'user');
+                  setRegisteredEmail(values.email);
+                  const codeMsg = res.verificationCode ? ` Verification Code (for testing): ${res.verificationCode}` : '';
+                  setSuccess(`Registration successful! Please enter the 6-digit verification code.${codeMsg}`);
+                  setMode('verify');
                 } catch (e) {
                   setError(e.message);
                 }
@@ -139,15 +145,6 @@ export default function Auth({ onLoginSuccess }) {
                   <div className="form-group">
                     <label className="form-label">Password</label>
                     <Field name="password" type="password" className="form-input" required placeholder="••••••••" />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Account Type</label>
-                    <Field as="select" name="role" className="form-input">
-                      <option value="user">Customer</option>
-                      <option value="bakery_owner">Bakery Owner / Staff</option>
-                      <option value="admin">Platform Admin</option>
-                    </Field>
                   </div>
 
                   <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
@@ -239,6 +236,54 @@ export default function Auth({ onLoginSuccess }) {
                 </Form>
               )}
             </Formik>
+          </div>
+        )}
+
+        {mode === 'verify' && (
+          <div>
+            <h3 style={{ fontSize: '1.8rem', marginBottom: '0.25rem', fontFamily: 'var(--font-serif)' }}>Verify Account</h3>
+            <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem' }}>Please enter the 6-digit verification code sent to {registeredEmail}.</p>
+            
+            <Formik
+              initialValues={{ code: '' }}
+              onSubmit={async (values, { setSubmitting }) => {
+                setError('');
+                setSuccess('');
+                try {
+                  await verifyEmail(registeredEmail, values.code);
+                  setSuccess('Email verified successfully! You can now log in.');
+                  setMode('login');
+                } catch (e) {
+                  setError(e.message);
+                }
+                setSubmitting(false);
+              }}
+            >
+              {({ isSubmitting }) => (
+                <Form>
+                  <div className="form-group">
+                    <label className="form-label">6-Digit Verification Code</label>
+                    <Field 
+                      name="code" 
+                      type="text" 
+                      maxLength={6} 
+                      className="form-input" 
+                      required 
+                      placeholder="123456" 
+                      style={{ letterSpacing: '8px', textAlign: 'center', fontSize: '1.25rem', fontWeight: 'bold' }} 
+                    />
+                  </div>
+                  <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
+                    Verify Code
+                  </button>
+                </Form>
+              )}
+            </Formik>
+            <p style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.9rem' }}>
+              <span style={{ color: 'var(--accent-color)', cursor: 'pointer', fontWeight: '600' }} onClick={() => setMode('login')}>
+                Back to Sign In
+              </span>
+            </p>
           </div>
         )}
 

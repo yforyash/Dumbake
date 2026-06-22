@@ -71,9 +71,9 @@ export default function Header({ user, onLogout, cartCount, onCartClick }) {
           {/* Contact and actions group */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             {/* Phone link */}
-            <a href="tel:+919999988888" style={{ display: 'none', lg: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-color)', fontWeight: '700', fontSize: '0.85rem' }} className="phone-nav-link">
+            <a href="tel:+919151463571" style={{ display: 'none', lg: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-color)', fontWeight: '700', fontSize: '0.85rem' }} className="phone-nav-link">
               <Phone size={16} />
-              <span>+91 99999 88888</span>
+              <span>+91 91514 63571</span>
             </a>
 
             {/* User Session Action */}
@@ -93,16 +93,16 @@ export default function Header({ user, onLogout, cartCount, onCartClick }) {
               </Link>
             )}
 
-            {/* Admin and Owner dashboard icons */}
+            {/* Admin and Owner dashboard links */}
             {user && user.role === 'admin' && (
-              <Link to="/admin-dashboard" className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '12px' }}>
-                Admin
-              </Link>
-            )}
-            {user && user.role === 'bakery_owner' && (
-              <Link to="/owner-dashboard" className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '12px' }}>
-                Owner
-              </Link>
+              <>
+                <Link to="/admin-dashboard" className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '12px' }}>
+                  Admin Panel
+                </Link>
+                <Link to="/owner-dashboard" className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '12px' }}>
+                  Kitchen Console
+                </Link>
+              </>
             )}
 
             {/* Shopping Cart button trigger */}

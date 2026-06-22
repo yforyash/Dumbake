@@ -29,6 +29,8 @@ async function initDatabase() {
         password_hash VARCHAR(100) NOT NULL,
         role VARCHAR(20) DEFAULT 'user',
         wallet_balance NUMERIC(10, 2) DEFAULT 1000.00, -- Seeded with default balance for easy demo ordering!
+        is_verified BOOLEAN DEFAULT FALSE,
+        verification_code VARCHAR(10),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -117,17 +119,19 @@ async function initDatabase() {
     // Seed bakery items
     await seedBakeryItems();
 
-    // Seed default roles/test accounts with password hash of 'admin123'
+    // Clean up previous user accounts except the single admin owner
+    await query(`DELETE FROM users WHERE email <> 'admin@dumbake.com'`);
+
+    // Seed single owner admin account
     await query(`
-      INSERT INTO users (name, email, password_hash, role, wallet_balance)
+      INSERT INTO users (name, email, password_hash, role, wallet_balance, is_verified)
       VALUES 
-        ('Dumbake Admin', 'admin@dumbake.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'admin', 5000.00),
-        ('Bakery Owner', 'owner@dumbake.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'bakery_owner', 2500.00),
-        ('Yash Customer', 'customer@dumbake.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'user', 1000.00)
+        ('Ishika (Owner)', 'admin@dumbake.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'admin', 5000.00, TRUE)
       ON CONFLICT (email) DO UPDATE SET 
         name = EXCLUDED.name, 
         password_hash = EXCLUDED.password_hash, 
-        role = EXCLUDED.role;
+        role = EXCLUDED.role,
+        is_verified = EXCLUDED.is_verified;
     `);
     console.log('[DB] Core database seeding completed successfully.');
 

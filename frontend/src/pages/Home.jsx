@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { Sparkles, Leaf, Plus, Star, MessageSquarePlus, RefreshCw, Send, Check } from 'lucide-react';
 import { fetchItems, fetchAIRecommendations, postReview, fetchReviews, submitBulkEnquiry } from '../services/api';
@@ -495,7 +496,7 @@ export default function Home({ user, onAddToCart }) {
           <h4 style={{ fontSize: '1.8rem', fontWeight: '800', marginBottom: '1.25rem' }}>
             Meet the Maker – Ishika
           </h4>
-          <p style={{ fontSize: '1rem', fontStyle: 'italic', lineHeight: '1.6', marginBottom: '1.5rem', opacity: 0.95, color: '#ffffff !important' }}>
+          <p style={{ fontSize: '1rem', fontStyle: 'italic', lineHeight: '1.6', marginBottom: '1.5rem', color: 'rgba(255,255,255,0.9)' }}>
             "Baking brings me absolute peace and happiness. Whisking fresh batters, layering chocolates, and creating customized treats for Ranchi celebrations is where I feel most at home."
           </p>
           <button onClick={() => setIsBulkModalOpen(true)} className="btn btn-secondary" style={{ alignSelf: 'flex-start', padding: '0.6rem 1.5rem', fontSize: '0.85rem', background: '#ffffff', color: 'var(--accent-color)' }}>
@@ -663,7 +664,7 @@ export default function Home({ user, onAddToCart }) {
       </a>
 
       {/* Product Customize Modal */}
-      {selectedItem && (
+      {selectedItem && createPortal(
         <div className="dialog-overlay" onClick={() => setSelectedItem(null)}>
           <div className="dialog-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
             <h3 style={{ fontSize: '1.6rem', marginBottom: '0.5rem' }}>
@@ -764,11 +765,12 @@ export default function Home({ user, onAddToCart }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Bulk Order Enquiry Modal */}
-      {isBulkModalOpen && (
+      {isBulkModalOpen && createPortal(
         <div className="dialog-overlay" onClick={() => { setIsBulkModalOpen(false); setBulkSuccess(false); }}>
           <div className="dialog-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
             <h3 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Bulk Order Enquiry</h3>
@@ -819,38 +821,38 @@ export default function Home({ user, onAddToCart }) {
 
                     <div className="grid grid-2" style={{ gap: '15px' }}>
                       <div className="form-group">
-                        <label className="form-label">Email</label>
-                        <Field name="email" type="email" className="form-input" placeholder="yash@example.com" />
+                        <label className="form-label">Email Address</label>
+                        <Field name="email" type="email" className="form-input" placeholder="john@example.com" />
                         <ErrorMessage name="email" component="div" style={{ color: 'var(--accent-color)', fontSize: '0.75rem', marginTop: '4px' }} />
                       </div>
                       <div className="form-group">
                         <label className="form-label">Phone Number</label>
-                        <Field name="phone" type="text" className="form-input" placeholder="+91 99999 88888" />
+                        <Field name="phone" type="text" className="form-input" placeholder="9151463571" />
                         <ErrorMessage name="phone" component="div" style={{ color: 'var(--accent-color)', fontSize: '0.75rem', marginTop: '4px' }} />
                       </div>
                     </div>
 
                     <div className="grid grid-2" style={{ gap: '15px' }}>
                       <div className="form-group">
-                        <label className="form-label">Event Date</label>
+                        <label className="form-label">Date of Event</label>
                         <Field name="eventDate" type="date" className="form-input" />
                         <ErrorMessage name="eventDate" component="div" style={{ color: 'var(--accent-color)', fontSize: '0.75rem', marginTop: '4px' }} />
                       </div>
                       <div className="form-group">
-                        <label className="form-label">Expected Quantity (Min 10)</label>
+                        <label className="form-label">Approx Quantity of Guests</label>
                         <Field name="quantity" type="number" className="form-input" min={10} />
                         <ErrorMessage name="quantity" component="div" style={{ color: 'var(--accent-color)', fontSize: '0.75rem', marginTop: '4px' }} />
                       </div>
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">Event Details & Specific Requirements</label>
+                      <label className="form-label">Custom Theme Requirements / Menu Notes</label>
                       <Field 
                         as="textarea" 
                         name="notes" 
                         className="form-input" 
                         rows={3} 
-                        placeholder="E.g., Diwali gifting boxes, wedding tier cakes, brookies boxes with custom ribbons..." 
+                        placeholder="E.g., require custom rose designs on 15 bento cakes..." 
                       />
                       <ErrorMessage name="notes" component="div" style={{ color: 'var(--accent-color)', fontSize: '0.75rem', marginTop: '4px' }} />
                     </div>
@@ -868,7 +870,8 @@ export default function Home({ user, onAddToCart }) {
               </Formik>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

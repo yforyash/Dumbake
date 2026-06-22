@@ -7,7 +7,7 @@ const { authenticate } = require('../middlewares/auth');
 // Register user
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, passwordHash, role } = req.body;
+    const { name, email, passwordHash } = req.body;
     
     // Check if user already exists
     const exists = await query('SELECT id FROM users WHERE email = $1', [email]);
@@ -15,16 +15,49 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
+    // Generate 6-digit verification code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
     // Default balance is 1000.00 to make simulated demo payments easy!
-    const userRole = role || 'user';
+    // Every registered user starts as 'user' role
     const result = await query(
-      `INSERT INTO users (name, email, password_hash, role, wallet_balance)
-       VALUES ($1, $2, $3, $4, 1000.00)
-       RETURNING id, name, email, role, wallet_balance`,
-      [name, email, passwordHash, userRole]
+      `INSERT INTO users (name, email, password_hash, role, wallet_balance, is_verified, verification_code)
+       VALUES ($1, $2, $3, 'user', 1000.00, FALSE, $4)
+       RETURNING id, name, email, role, wallet_balance, is_verified`,
+      [name, email, passwordHash, code]
     );
 
-    res.status(201).json(result.rows[0]);
+    console.log(`[Email Simulator] Verification code for ${email} is: ${code}`);
+
+    res.status(201).json({
+      ...result.rows[0],
+      verificationCode: code // Send back code for convenient UI auto-fill or mock alerts
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Verify email
+router.post('/verify', async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ error: 'Email and verification code are required' });
+    }
+
+    const result = await query('SELECT id, verification_code FROM users WHERE email = $1', [email]);
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Email address not found' });
+    }
+
+    const user = result.rows[0];
+    if (user.verification_code === code) {
+      await query('UPDATE users SET is_verified = TRUE WHERE email = $1', [email]);
+      res.json({ message: 'Email verified successfully!' });
+    } else {
+      res.status(400).json({ error: 'Invalid verification code' });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -36,7 +69,7 @@ router.post('/login', async (req, res) => {
     const { email, passwordHash } = req.body;
     
     const result = await query(
-      'SELECT id, name, email, password_hash, role, wallet_balance FROM users WHERE email = $1',
+      'SELECT id, name, email, password_hash, role, wallet_balance, is_verified FROM users WHERE email = $1',
       [email]
     );
     
@@ -47,6 +80,13 @@ router.post('/login', async (req, res) => {
     const user = result.rows[0];
     if (user.password_hash !== passwordHash) {
       return res.status(400).json({ error: 'Invalid email or password' });
+    }
+
+    if (!user.is_verified) {
+      return res.status(400).json({
+        error: 'Email address not verified. Please verify your email first.',
+        unverified: true
+      });
     }
     
     res.json({

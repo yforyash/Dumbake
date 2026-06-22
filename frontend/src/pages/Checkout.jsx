@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MapPin, ShieldCheck, CreditCard, DollarSign, Smartphone, Loader, CheckCircle } from 'lucide-react';
 import { postOrder } from '../services/api';
 import confetti from 'canvas-confetti';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 
 export default function Checkout({ user, cartItems, onClearCart }) {
   const navigate = useNavigate();
@@ -18,8 +18,8 @@ export default function Checkout({ user, cartItems, onClearCart }) {
   const [address, setAddress] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Card');
 
-  // Map Picker Coordinate State (default to a mock bakery location)
-  const [coords, setCoords] = useState({ lat: 28.6139, lng: 77.2090 });
+  // Map Picker Coordinate State (default to a Ranchi bakery location)
+  const [coords, setCoords] = useState({ lat: 23.3441, lng: 85.3096 });
 
   // Masked Payment States
   const [cardNumber, setCardNumber] = useState('');
@@ -41,6 +41,25 @@ export default function Checkout({ user, cartItems, onClearCart }) {
       navigate('/');
     }
   }, [cartItems, success]);
+
+  // Request and set user live geolocation
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setCoords({ lat: latitude, lng: longitude });
+          setAddress(`Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)} (Your Live Location)`);
+        },
+        (err) => {
+          console.warn('[Geolocation] Permission or locate failed, using default Ranchi coordinate.', err.message);
+          setCoords({ lat: 23.3441, lng: 85.3096 });
+        }
+      );
+    } else {
+      setCoords({ lat: 23.3441, lng: 85.3096 });
+    }
+  }, []);
 
   // Formats card number: inserts space every 4 digits
   const handleCardNumberChange = (e) => {
@@ -91,6 +110,17 @@ export default function Checkout({ user, cartItems, onClearCart }) {
     });
 
     return coords ? <Marker position={[coords.lat, coords.lng]} /> : null;
+  }
+
+  // Dynamic Center Handler component
+  function ChangeMapCenter({ center }) {
+    const map = useMap();
+    useEffect(() => {
+      if (center) {
+        map.setView([center.lat, center.lng], map.getZoom());
+      }
+    }, [center]);
+    return null;
   }
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -307,6 +337,7 @@ export default function Checkout({ user, cartItems, onClearCart }) {
                     <div className="map-picker-container">
                       <MapContainer center={[coords.lat, coords.lng]} zoom={13} style={{ width: '100%', height: '100%' }}>
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                        <ChangeMapCenter center={coords} />
                         <LocationMarker />
                       </MapContainer>
                     </div>

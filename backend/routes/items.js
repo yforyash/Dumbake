@@ -49,8 +49,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Add bakery item (Admin & Bakery Owner only)
-router.post('/', authenticate, requireRole(['admin', 'bakery_owner']), async (req, res) => {
+// Add bakery item (Admin only)
+router.post('/', authenticate, requireRole(['admin']), async (req, res) => {
   try {
     const { name, description, price, category, image_url, is_eggless, is_bestseller, stock_quantity } = req.body;
     
@@ -72,8 +72,8 @@ router.post('/', authenticate, requireRole(['admin', 'bakery_owner']), async (re
   }
 });
 
-// Update bakery item (Admin & Bakery Owner only)
-router.put('/:id', authenticate, requireRole(['admin', 'bakery_owner']), async (req, res) => {
+// Update bakery item (Admin only)
+router.put('/:id', authenticate, requireRole(['admin']), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, price, category, image_url, is_eggless, is_bestseller, stock_quantity, status } = req.body;
@@ -106,8 +106,8 @@ router.put('/:id', authenticate, requireRole(['admin', 'bakery_owner']), async (
   }
 });
 
-// Delete bakery item (Admin & Bakery Owner only)
-router.delete('/:id', authenticate, requireRole(['admin', 'bakery_owner']), async (req, res) => {
+// Delete bakery item (Admin only)
+router.delete('/:id', authenticate, requireRole(['admin']), async (req, res) => {
   try {
     const { id } = req.params;
     const check = await query('SELECT id FROM bakery_items WHERE id = $1', [parseInt(id)]);

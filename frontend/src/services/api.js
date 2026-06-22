@@ -38,6 +38,17 @@ export async function registerUser(name, email, passwordHash, role) {
   return data;
 }
 
+export async function verifyEmail(email, code) {
+  const res = await fetch(`${BASE_URL}/auth/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Verification failed');
+  return data;
+}
+
 export async function forgotPassword(email) {
   const res = await fetch(`${BASE_URL}/auth/forgot-password`, {
     method: 'POST',
