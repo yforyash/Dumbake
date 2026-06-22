@@ -27,6 +27,15 @@ export default function Checkout({ user, cartItems, onClearCart }) {
   const [cardCvv, setCardCvv] = useState('');
   const [upiId, setUpiId] = useState('');
 
+  // Delivery Scheduling
+  const getTomorrowString = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  };
+  const [deliveryDate, setDeliveryDate] = useState(getTomorrowString());
+  const [deliveryTimeSlot, setDeliveryTimeSlot] = useState('Morning (9 AM - 12 PM)');
+
   useEffect(() => {
     if (cartItems.length === 0 && !success) {
       navigate('/');
@@ -131,11 +140,15 @@ export default function Checkout({ user, cartItems, onClearCart }) {
     setLoading(true);
 
     try {
+      const finalAddress = deliveryType === 'Delivery'
+        ? `${address} | Scheduled: ${deliveryDate} (${deliveryTimeSlot})`
+        : `Store Pickup | Scheduled: ${deliveryDate} (${deliveryTimeSlot})`;
+
       const orderPayload = {
         items: cartItems.map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })),
         totalPrice: grandTotal,
         deliveryType,
-        address: deliveryType === 'Delivery' ? address : 'Pickup Counter',
+        address: finalAddress,
         paymentMethod,
         customerName,
         customerPhone
@@ -246,6 +259,33 @@ export default function Checkout({ user, cartItems, onClearCart }) {
                   className="form-input" 
                   required 
                 />
+              </div>
+              
+              <div style={{ display: 'flex', gap: '15px' }}>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">Delivery/Pickup Date</label>
+                  <input 
+                    type="date" 
+                    min={getTomorrowString()}
+                    value={deliveryDate} 
+                    onChange={(e) => setDeliveryDate(e.target.value)} 
+                    className="form-input" 
+                    required 
+                  />
+                </div>
+                
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">Preferred Time Slot</label>
+                  <select 
+                    value={deliveryTimeSlot} 
+                    onChange={(e) => setDeliveryTimeSlot(e.target.value)} 
+                    className="form-input"
+                  >
+                    <option value="Morning (9 AM - 12 PM)">Morning (9 AM - 12 PM)</option>
+                    <option value="Afternoon (12 PM - 4 PM)">Afternoon (12 PM - 4 PM)</option>
+                    <option value="Evening (4 PM - 8 PM)">Evening (4 PM - 8 PM)</option>
+                  </select>
+                </div>
               </div>
 
               {deliveryType === 'Delivery' && (

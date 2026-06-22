@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
 const { query } = require('./config/db');
 const { seedBakeryItems } = require('./config/seed');
 require('dotenv').config();
@@ -117,6 +119,125 @@ app.use('/api/items', require('./routes/items'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/ai', require('./routes/ai'));
+
+// Swagger Configuration
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Dumbake Bakery API Documentation',
+      version: '1.0.0',
+      description: 'Interactive API sandbox for Dumbake premium bakery orders, items catalog, reviews, and AI recommendation features.'
+    },
+    servers: [
+      {
+        url: `http://localhost:${PORT}`
+      }
+    ]
+  },
+  apis: []
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
+swaggerSpec.paths = {
+  '/api/auth/register': {
+    'post': {
+      'summary': 'Register a new user account',
+      'requestBody': {
+        'required': true,
+        'content': {
+          'application/json': {
+            'schema': {
+              'type': 'object',
+              'properties': {
+                'name': { 'type': 'string' },
+                'email': { 'type': 'string' },
+                'passwordHash': { 'type': 'string' },
+                'role': { 'type': 'string', 'enum': ['user', 'bakery_owner', 'admin'] }
+              }
+            }
+          }
+        }
+      },
+      'responses': {
+        '201': { 'description': 'Created user object' }
+      }
+    }
+  },
+  '/api/auth/login': {
+    'post': {
+      'summary': 'Authenticate user credentials',
+      'requestBody': {
+        'required': true,
+        'content': {
+          'application/json': {
+            'schema': {
+              'type': 'object',
+              'properties': {
+                'email': { 'type': 'string' },
+                'passwordHash': { 'type': 'string' }
+              }
+            }
+          }
+        }
+      },
+      'responses': {
+        '200': { 'description': 'Success user session object' }
+      }
+    }
+  },
+  '/api/items': {
+    'get': {
+      'summary': 'Retrieve filtered bakery catalog items',
+      'parameters': [
+        { 'name': 'category', 'in': 'query', 'schema': { 'type': 'string' } },
+        { 'name': 'search', 'in': 'query', 'schema': { 'type': 'string' } },
+        { 'name': 'eggless', 'in': 'query', 'schema': { 'type': 'string', 'enum': ['true', 'false'] } }
+      ],
+      'responses': {
+        '200': { 'description': 'List of bakery items' }
+      }
+    }
+  },
+  '/api/orders': {
+    'post': {
+      'summary': 'Submit a checkout order request',
+      'requestBody': {
+        'required': true,
+        'content': {
+          'application/json': {
+            'schema': {
+              'type': 'object',
+              'properties': {
+                'items': { 'type': 'array', 'items': { 'type': 'object' } },
+                'totalPrice': { 'type': 'number' },
+                'deliveryType': { 'type': 'string' },
+                'address': { 'type': 'string' },
+                'paymentMethod': { 'type': 'string' },
+                'customerName': { 'type': 'string' },
+                'customerPhone': { 'type': 'string' }
+              }
+            }
+          }
+        }
+      },
+      'responses': {
+        '201': { 'description': 'Created order log' }
+      }
+    }
+  },
+  '/api/ai/recommendations': {
+    'get': {
+      'summary': 'Fetch personalized recommendations powered by Gemini AI API',
+      'responses': {
+        '200': { 'description': 'List of recommended items' }
+      }
+    }
+  }
+};
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Leaf, Plus, Star, MessageSquarePlus, RefreshCw } from 'lucide-react';
 import { fetchItems, fetchAIRecommendations, postReview, fetchReviews } from '../services/api';
+import { Formik, Form, Field, ErrorMessage } from 'formik';
+import * as Yup from 'yup';
 
 export default function Home({ user, onAddToCart }) {
   const [items, setItems] = useState([]);
@@ -14,9 +16,6 @@ export default function Home({ user, onAddToCart }) {
   const [eggless, setEggless] = useState(false);
 
   // Review states
-  const [reviewerName, setReviewerName] = useState('');
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState('');
   const [reviewError, setReviewError] = useState('');
   const [reviewSuccess, setReviewSuccess] = useState('');
 
@@ -48,36 +47,14 @@ export default function Home({ user, onAddToCart }) {
     loadData();
   };
 
-  const handleReviewSubmit = async (e) => {
-    e.preventDefault();
-    setReviewError('');
-    setReviewSuccess('');
-
-    if (!reviewerName && !user) {
-      setReviewError('Please specify a name or sign in.');
-      return;
-    }
-
-    try {
-      const reviewPayload = {
-        reviewerName: reviewerName || user.name,
-        rating: parseInt(rating),
-        comment
-      };
-      await postReview(reviewPayload);
-      setReviewSuccess('Thank you for your feedback! Review posted.');
-      setComment('');
-      setReviewerName('');
-      
-      // Reload reviews
-      const updatedReviews = await fetchReviews();
-      setReviews(updatedReviews);
-    } catch (err) {
-      setReviewError(err.message || 'Failed to submit review.');
-    }
-  };
-
   const categoriesList = ['Cakes', 'Pastries', 'Breads', 'Cookies', 'Savories'];
+
+  // Yup validation schema for customer review log
+  const reviewValidationSchema = Yup.object().shape({
+    reviewerName: user ? Yup.string() : Yup.string().required('Please enter your name'),
+    rating: Yup.number().required('Please select a rating'),
+    comment: Yup.string().min(5, 'Feedback must be at least 5 characters').required('Feedback comment is required')
+  });
 
   return (
     <div className="container">
@@ -272,46 +249,70 @@ export default function Home({ user, onAddToCart }) {
           {reviewError && <div className="badge-egg" style={{ padding: '8px', fontSize: '0.85rem', marginBottom: '1rem', borderRadius: '4px' }}>{reviewError}</div>}
           {reviewSuccess && <div className="badge-eggless" style={{ padding: '8px', fontSize: '0.85rem', marginBottom: '1rem', borderRadius: '4px' }}>{reviewSuccess}</div>}
 
-          <form onSubmit={handleReviewSubmit}>
-            {!user && (
-              <div className="form-group">
-                <label className="form-label">Your Name</label>
-                <input 
-                  type="text" 
-                  value={reviewerName} 
-                  onChange={(e) => setReviewerName(e.target.value)} 
-                  className="form-input" 
-                  placeholder="E.g., Priya S." 
-                  required 
-                />
-              </div>
+          <Formik
+            initialValues={{ reviewerName: user ? user.name : '', rating: 5, comment: '' }}
+            validationSchema={reviewValidationSchema}
+            onSubmit={async (values, { setSubmitting, resetForm }) => {
+              setReviewError('');
+              setReviewSuccess('');
+              try {
+                const reviewPayload = {
+                  reviewerName: values.reviewerName || user.name,
+                  rating: parseInt(values.rating),
+                  comment: values.comment
+                };
+                await postReview(reviewPayload);
+                setReviewSuccess('Thank you for your feedback! Review posted.');
+                resetForm();
+
+                // Reload reviews
+                const updatedReviews = await fetchReviews();
+                setReviews(updatedReviews);
+              } catch (err) {
+                setReviewError(err.message || 'Failed to submit review.');
+              }
+              setSubmitting(false);
+            }}
+          >
+            {({ isSubmitting }) => (
+              <Form>
+                {!user && (
+                  <div className="form-group">
+                    <label className="form-label">Your Name</label>
+                    <Field name="reviewerName" type="text" className="form-input" placeholder="E.g., Priya S." />
+                    <ErrorMessage name="reviewerName" component="div" style={{ color: 'var(--accent-color)', fontSize: '0.75rem', marginTop: '4px' }} />
+                  </div>
+                )}
+                
+                <div className="form-group">
+                  <label className="form-label">Rating (Stars)</label>
+                  <Field as="select" name="rating" className="form-input">
+                    <option value={5}>⭐⭐⭐⭐⭐ (5/5)</option>
+                    <option value={4}>⭐⭐⭐⭐ (4/5)</option>
+                    <option value={3}>⭐⭐⭐ (3/5)</option>
+                    <option value={2}>⭐⭐ (2/5)</option>
+                    <option value={1}>⭐ (1/5)</option>
+                  </Field>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Review Comment</label>
+                  <Field 
+                    as="textarea" 
+                    name="comment" 
+                    className="form-input" 
+                    rows={3} 
+                    placeholder="How was the crumb structure of the sourdough? The sweetness of the truffle?"
+                  />
+                  <ErrorMessage name="comment" component="div" style={{ color: 'var(--accent-color)', fontSize: '0.75rem', marginTop: '4px' }} />
+                </div>
+
+                <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{ width: '100%' }}>
+                  Post Review
+                </button>
+              </Form>
             )}
-            
-            <div className="form-group">
-              <label className="form-label">Rating (Stars)</label>
-              <select value={rating} onChange={(e) => setRating(parseInt(e.target.value))} className="form-input">
-                <option value={5}>⭐⭐⭐⭐⭐ (5/5)</option>
-                <option value={4}>⭐⭐⭐⭐ (4/5)</option>
-                <option value={3}>⭐⭐⭐ (3/5)</option>
-                <option value={2}>⭐⭐ (2/5)</option>
-                <option value={1}>⭐ (1/5)</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Review Comment</label>
-              <textarea 
-                value={comment} 
-                onChange={(e) => setComment(e.target.value)} 
-                className="form-input" 
-                rows={3} 
-                placeholder="How was the crumb structure of the sourdough? The sweetness of the truffle?"
-                required
-              />
-            </div>
-
-            <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Post Review</button>
-          </form>
+          </Formik>
         </div>
       </section>
     </div>
