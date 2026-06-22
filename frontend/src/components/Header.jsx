@@ -1,110 +1,153 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingBag, LogIn, LogOut, User, LayoutDashboard, History } from 'lucide-react';
+import { ShoppingBag, LogIn, LogOut, User, LayoutDashboard, History, Search, Phone } from 'lucide-react';
 
 export default function Header({ user, onLogout, cartCount, onCartClick }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleLogoutClick = () => {
     onLogout();
     navigate('/login');
   };
 
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/?search=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      navigate('/');
+    }
+  };
+
+  const scrollToSection = (sectionId) => {
+    if (location.pathname !== '/') {
+      navigate(`/?scroll=${sectionId}`);
+      return;
+    }
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <>
+      {/* Top Ticker announcement bar */}
       <div className="announcement-bar">
         <span>✨ Same-Day Cake Delivery in Ranchi. Baked fresh daily with premium ingredients! ✨</span>
       </div>
-      <header className="header">
-        <div className="header-container">
-          <Link to="/" className="logo" style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 'bold' }}>
-            Dumbake
-          </Link>
 
-        <nav className="nav-links">
-          <Link to="/" className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}>
-            Home
-          </Link>
+      <header className="header" style={{ backgroundColor: '#ffffff', borderBottom: '1px solid var(--border-color)' }}>
+        {/* Main top header row */}
+        <div className="header-container" style={{ padding: '0.8rem 1.5rem', gap: '20px' }}>
           
-          {user && user.role === 'admin' && (
-            <Link to="/admin-dashboard" className={`nav-link ${location.pathname === '/admin-dashboard' ? 'active' : ''}`}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <LayoutDashboard size={16} /> Admin Panel
-              </span>
-            </Link>
-          )}
+          {/* Logo link */}
+          <Link to="/" className="logo" style={{ color: 'var(--accent-color)', fontSize: '2rem', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 'bold' }}>
+            Dumbake🍰
+          </Link>
 
-          {user && user.role === 'bakery_owner' && (
-            <Link to="/owner-dashboard" className={`nav-link ${location.pathname === '/owner-dashboard' ? 'active' : ''}`}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <LayoutDashboard size={16} /> Bakery Owner Panel
-              </span>
-            </Link>
-          )}
+          {/* Search bar form */}
+          <form onSubmit={handleSearchSubmit} style={{ flex: '1', maxWidth: '500px', position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input 
+              type="text" 
+              placeholder="Search for brookies, custom cakes, cupcakes..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="form-input"
+              style={{ 
+                width: '100%', 
+                padding: '0.6rem 1rem 0.6rem 2.5rem', 
+                borderRadius: '24px', 
+                border: '1.5px solid var(--border-color)', 
+                backgroundColor: 'var(--primary-light)', 
+                fontSize: '0.85rem' 
+              }}
+            />
+            <Search size={16} style={{ position: 'absolute', left: '12px', color: 'var(--accent-color)' }} />
+          </form>
 
-          {user && user.role === 'user' && (
-            <Link to="/order-history" className={`nav-link ${location.pathname === '/order-history' ? 'active' : ''}`}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <History size={16} /> My Orders
-              </span>
-            </Link>
-          )}
+          {/* Contact and actions group */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            {/* Phone link */}
+            <a href="tel:+919999988888" style={{ display: 'none', lg: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-color)', fontWeight: '700', fontSize: '0.85rem' }} className="phone-nav-link">
+              <Phone size={16} />
+              <span>+91 99999 88888</span>
+            </a>
 
-          {user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-color)', fontWeight: '600' }}>
-                <User size={16} style={{ color: 'var(--accent-color)' }} />
-                {user.name}
-              </span>
-              <button onClick={handleLogoutClick} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
-                <LogOut size={14} /> Logout
-              </button>
-            </div>
-          ) : (
-            <Link to="/login" className="btn btn-primary" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
-              <LogIn size={14} /> Sign In
-            </Link>
-          )}
-        </nav>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Cart Icon Trigger */}
-          <button 
-            onClick={onCartClick} 
-            className="btn btn-secondary" 
-            style={{ 
-              position: 'relative', 
-              padding: '0.6rem', 
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '1px solid var(--primary-color)'
-            }}
-          >
-            <ShoppingBag size={20} />
-            {cartCount > 0 && (
-              <span 
-                style={{ 
-                  position: 'absolute', 
-                  top: '-4px', 
-                  right: '-4px', 
-                  background: 'var(--accent-color)', 
-                  color: 'white', 
-                  borderRadius: '50%', 
-                  padding: '2px 6px', 
-                  fontSize: '0.7rem',
-                  fontWeight: '700'
-                }}
-              >
-                {cartCount}
-              </span>
+            {/* User Session Action */}
+            {user ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-color)', fontWeight: '700', fontSize: '0.85rem' }}>
+                  <User size={16} style={{ color: 'var(--accent-color)' }} />
+                  {user.name.split(' ')[0]}
+                </span>
+                <button onClick={handleLogoutClick} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '12px' }}>
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <Link to="/login" className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '12px' }}>
+                Sign In
+              </Link>
             )}
-          </button>
+
+            {/* Admin and Owner dashboard icons */}
+            {user && user.role === 'admin' && (
+              <Link to="/admin-dashboard" className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '12px' }}>
+                Admin
+              </Link>
+            )}
+            {user && user.role === 'bakery_owner' && (
+              <Link to="/owner-dashboard" className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '12px' }}>
+                Owner
+              </Link>
+            )}
+
+            {/* Shopping Cart button trigger */}
+            <button 
+              onClick={onCartClick} 
+              className="btn btn-primary" 
+              style={{ 
+                position: 'relative', 
+                padding: '0.5rem 1rem', 
+                borderRadius: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                fontSize: '0.8rem'
+              }}
+            >
+              <ShoppingBag size={16} />
+              <span>Basket ({cartCount})</span>
+            </button>
+          </div>
         </div>
-      </div>
-    </header>
+
+        {/* Sub-header navigation row */}
+        <div style={{ backgroundColor: 'var(--accent-color)', padding: '8px 1.5rem', display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '20px', borderTop: '1px solid var(--border-color)' }}>
+          <span onClick={() => scrollToSection('best-sellers')} className="nav-link-sub" style={{ color: '#ffffff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
+            Best Sellers
+          </span>
+          <span onClick={() => scrollToSection('menu-catalog')} className="nav-link-sub" style={{ color: '#ffffff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
+            Our Collection
+          </span>
+          <span onClick={() => scrollToSection('whatsapp-custom')} className="nav-link-sub" style={{ color: '#ffffff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
+            Custom Cakes
+          </span>
+          <span onClick={() => scrollToSection('gifting-specials')} className="nav-link-sub" style={{ color: '#ffffff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
+            Gifting Specials
+          </span>
+          <span onClick={() => scrollToSection('bulk-orders')} className="nav-link-sub" style={{ color: '#ffffff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
+            Bulk Orders
+          </span>
+          <span onClick={() => scrollToSection('story-section')} className="nav-link-sub" style={{ color: '#ffffff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
+            About Us
+          </span>
+        </div>
+      </header>
     </>
   );
 }
