@@ -110,30 +110,111 @@ function runMockQuery(text, params) {
 
   // 3. INSERT INTO users
   if (norm.includes('insert into users')) {
-    const [name, email, passwordHash, role] = params;
-    const code = params.length > 4 ? params[params.length - 1] : null;
+    let name, email, passwordHash, role, code;
+    
+    if (norm.includes('verification_code')) {
+      // INSERT INTO users (name, email, password_hash, role, wallet_balance, is_verified, verification_code) VALUES ($1, $2, $3, 'user', 1000.00, FALSE, $4)
+      // params: [name, email, passwordHash, code]
+      name = params[0];
+      email = params[1];
+      passwordHash = params[2];
+      code = params[3];
+      role = 'user';
+    } else if (params.length === 3) {
+      // INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'user')
+      // params: [name, email, passwordHash]
+      name = params[0];
+      email = params[1];
+      passwordHash = params[2];
+      role = 'user';
+      code = null;
+    } else if (params.length === 2) {
+      // INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, 'mock_hash', 'user')
+      // params: [name, email]
+      name = params[0];
+      email = params[1];
+      passwordHash = 'mock_hash';
+      role = 'user';
+      code = null;
+    } else {
+      name = params[0];
+      email = params[1];
+      passwordHash = params[2];
+      role = params[3] || 'user';
+      code = null;
+    }
+
+    const existingIdx = mockState.users.findIndex(u => u.email === email);
     const newUser = {
-      id: mockState.users.length + 1,
+      id: existingIdx >= 0 ? mockState.users[existingIdx].id : mockState.users.length + 1,
       name,
       email,
       password_hash: passwordHash,
-      role: role || 'user',
-      wallet_balance: 1000.00,
-      is_verified: false,
+      role: role,
+      wallet_balance: existingIdx >= 0 ? mockState.users[existingIdx].wallet_balance : 1000.00,
+      is_verified: existingIdx >= 0 ? mockState.users[existingIdx].is_verified : false,
       verification_code: code
     };
-    mockState.users.push(newUser);
-    return { rows: [newUser] };
+
+    if (existingIdx >= 0) {
+      mockState.users[existingIdx] = newUser;
+    } else {
+      mockState.users.push(newUser);
+    }
+    const publicUser = {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      wallet_balance: newUser.wallet_balance,
+      is_verified: newUser.is_verified
+    };
+    return { rows: [publicUser] };
   }
 
-  // 3b. UPDATE users (verification)
-  if (norm.includes('update users') && norm.includes('is_verified')) {
-    const email = params[params.length - 1];
-    const user = mockState.users.find(u => u.email === email);
-    if (user) {
-      user.is_verified = true;
+  // 3b. UPDATE users
+  if (norm.includes('update users')) {
+    let user;
+    if (norm.includes('where email =')) {
+      const email = params[params.length - 1];
+      user = mockState.users.find(u => u.email === email);
+    } else if (norm.includes('where id =')) {
+      const id = parseInt(params[params.length - 1]);
+      user = mockState.users.find(u => u.id === id);
     }
-    return { rows: user ? [user] : [] };
+    
+    if (user) {
+      if (norm.includes('is_verified = true') || norm.includes('is_verified = $')) {
+        user.is_verified = true;
+      }
+      if (norm.includes('is_verified = false')) {
+        user.is_verified = false;
+      }
+      if (norm.includes('verification_code =')) {
+        if (norm.includes('set name =') && norm.includes('password_hash =')) {
+          user.name = params[0];
+          user.password_hash = params[1];
+          user.verification_code = params[2];
+        } else {
+          user.verification_code = params[0];
+        }
+      }
+      if (norm.includes('password_hash =') && !norm.includes('set name =')) {
+        user.password_hash = params[0];
+      }
+      if (norm.includes('wallet_balance = wallet_balance -')) {
+        user.wallet_balance = parseFloat((user.wallet_balance - parseFloat(params[0])).toFixed(2));
+      }
+    }
+    const publicUser = user ? {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      wallet_balance: user.wallet_balance,
+      is_verified: user.is_verified
+    } : null;
+    return { rows: publicUser ? [publicUser] : [] };
   }
 
   // 3c. UPDATE bakery_items

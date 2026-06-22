@@ -146,11 +146,15 @@ export default function App() {
             <Route 
               path="/checkout" 
               element={
-                <Checkout 
-                  user={user} 
-                  cartItems={cartItems} 
-                  onClearCart={handleClearCart} 
-                />
+                user ? (
+                  <Checkout 
+                    user={user} 
+                    cartItems={cartItems} 
+                    onClearCart={handleClearCart} 
+                  />
+                ) : (
+                  <Navigate to="/login" />
+                )
               } 
             />
 
@@ -174,7 +178,16 @@ export default function App() {
                 )
               } 
             />
-            <Route path="/order-history" element={<OrderHistory user={user} />} />
+            <Route 
+              path="/order-history" 
+              element={
+                user ? (
+                  <OrderHistory user={user} />
+                ) : (
+                  <Navigate to="/login" />
+                )
+              } 
+            />
             
             {/* Catch-all fallback */}
             <Route path="*" element={<Navigate to="/" />} />

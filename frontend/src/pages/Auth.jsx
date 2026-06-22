@@ -65,8 +65,7 @@ export default function Auth({ onLoginSuccess }) {
                   setError(e.message);
                   if (e.unverified) {
                     setRegisteredEmail(values.email);
-                    const codeMsg = e.verificationCode ? ` Verification Code (for testing): ${e.verificationCode}` : '';
-                    setSuccess(`Please enter the 6-digit verification code to activate your account.${codeMsg}`);
+                    setSuccess('Please enter the 6-digit verification code to activate your account.');
                     setMode('verify');
                   }
                 }
@@ -123,8 +122,7 @@ export default function Auth({ onLoginSuccess }) {
                 try {
                   const res = await registerUser(values.name, values.email, hash(values.password), 'user');
                   setRegisteredEmail(values.email);
-                  const codeMsg = res.verificationCode ? ` Verification Code (for testing): ${res.verificationCode}` : '';
-                  setSuccess(`Registration successful! Please enter the 6-digit verification code.${codeMsg}`);
+                  setSuccess('Registration successful! Please enter the 6-digit verification code.');
                   setMode('verify');
                 } catch (e) {
                   setError(e.message);

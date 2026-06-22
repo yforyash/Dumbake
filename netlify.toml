@@ -6,7 +6,7 @@
 # Proxy frontend backend API calls to the serverless function
 [[redirects]]
   from = "/_/backend/api/*"
-  to = "/.netlify/functions/api/:splat"
+  to = "/.netlify/functions/api/api/:splat"
   status = 200
 
 # Support SPA router history fallback

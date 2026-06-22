@@ -76,12 +76,11 @@ export default function Header({ user, onLogout, cartCount, onCartClick }) {
               <span>+91 91514 63571</span>
             </a>
 
-            {/* User Session Action */}
             {user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-color)', fontWeight: '700', fontSize: '0.85rem' }}>
                   <User size={16} style={{ color: 'var(--accent-color)' }} />
-                  {user.name.split(' ')[0]}
+                  {(user.name || 'User').split(' ')[0]}
                 </span>
                 <button onClick={handleLogoutClick} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '12px' }}>
                   Logout

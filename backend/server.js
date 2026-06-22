@@ -12,6 +12,20 @@ const PORT = process.env.PORT || 5001;
 app.use(cors());
 app.use(express.json());
 
+// Normalization middleware for serverless routing prefixes (Netlify/Vercel)
+app.use((req, res, next) => {
+  if (req.url.startsWith('/_/backend')) {
+    req.url = req.url.replace('/_/backend', '');
+  }
+  if (req.url.startsWith('/.netlify/functions/api')) {
+    req.url = req.url.replace('/.netlify/functions/api', '');
+  }
+  if (!req.url.startsWith('/api') && !req.url.startsWith('/api-docs') && req.url !== '/' && req.url !== '') {
+    req.url = '/api' + req.url;
+  }
+  next();
+});
+
 // Request logger middleware (simple implementation)
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
