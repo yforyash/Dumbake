@@ -156,6 +156,11 @@ function runMockQuery(text, params) {
     return { rows: [...mockState.reviews].reverse() };
   }
 
+  // 6b. SELECT * FROM bulk_enquiries
+  if (norm.includes('select * from bulk_enquiries')) {
+    return { rows: [...mockState.bulk_enquiries].reverse() };
+  }
+
   // 7. INSERT INTO reviews
   if (norm.includes('insert into reviews')) {
     const [userId, reviewerName, rating, comment] = params;

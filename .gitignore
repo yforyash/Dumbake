@@ -7,3 +7,6 @@ dist/
 .npmrc
 *.log
 .vercel
+
+# Local Netlify folder
+.netlify

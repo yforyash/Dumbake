@@ -151,4 +151,14 @@ router.post('/bulk-enquiry', async (req, res) => {
   }
 });
 
+// Get all bulk enquiries (Admin/Owner only)
+router.get('/bulk-enquiries', authenticate, requireRole(['admin', 'bakery_owner']), async (req, res) => {
+  try {
+    const result = await query('SELECT * FROM bulk_enquiries ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

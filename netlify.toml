@@ -1,0 +1,16 @@
+[build]
+  command = "npm run install-all && npm run build --prefix frontend"
+  publish = "frontend/dist"
+  functions = "netlify/functions"
+
+# Proxy frontend backend API calls to the serverless function
+[[redirects]]
+  from = "/_/backend/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# Support SPA router history fallback
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

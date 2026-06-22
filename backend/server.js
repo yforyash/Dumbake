@@ -273,7 +273,13 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
-app.listen(PORT, async () => {
-  console.log(`[Server] Dumbake running on port ${PORT}`);
-  await initDatabase();
-});
+// Initialize database on startup
+initDatabase();
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`[Server] Dumbake running on port ${PORT}`);
+  });
+}
+
+module.exports = app;

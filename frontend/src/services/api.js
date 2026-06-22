@@ -225,3 +225,12 @@ export async function submitBulkEnquiry(enquiryData) {
   if (!res.ok) throw new Error(data.error || 'Enquiry submission failed');
   return data;
 }
+
+export async function fetchBulkEnquiries() {
+  const res = await fetch(`${BASE_URL}/orders/bulk-enquiries`, {
+    headers: { 'x-user-id': getUserIdHeader() }
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Fetch bulk enquiries failed');
+  return data;
+}

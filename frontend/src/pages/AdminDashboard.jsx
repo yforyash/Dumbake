@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   fetchOrders, fetchItems, fetchReviews, updateOrderStatus, addBakeryItem, 
-  deleteBakeryItem, updateBakeryItem, fetchAIBestsellers 
+  deleteBakeryItem, updateBakeryItem, fetchAIBestsellers, fetchBulkEnquiries 
 } from '../services/api';
 import { 
   TrendingUp, Users, ShoppingBag, DollarSign, Plus, Trash2, Edit2, 
@@ -16,9 +16,10 @@ export default function AdminDashboard({ user }) {
   const [items, setItems] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [bestsellers, setBestsellers] = useState([]);
+  const [enquiries, setEnquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Tab control: 'stats', 'orders', 'items', 'reviews'
+  // Tab control: 'stats', 'orders', 'items', 'reviews', 'enquiries'
   const [activeTab, setActiveTab] = useState('stats');
 
   // Add/Edit Item modal state
@@ -61,6 +62,9 @@ export default function AdminDashboard({ user }) {
 
       const bsData = await fetchAIBestsellers();
       setBestsellers(bsData);
+
+      const enquiriesData = await fetchBulkEnquiries();
+      setEnquiries(enquiriesData);
     } catch (e) {
       console.error(e);
     } finally {
@@ -221,6 +225,12 @@ export default function AdminDashboard({ user }) {
             className={`dashboard-sidebar-item ${activeTab === 'reviews' ? 'active' : ''}`}
           >
             <Star size={18} /> Customer Logs ({reviews.length})
+          </div>
+          <div 
+            onClick={() => setActiveTab('enquiries')} 
+            className={`dashboard-sidebar-item ${activeTab === 'enquiries' ? 'active' : ''}`}
+          >
+            <Users size={18} /> Bulk Enquiries ({enquiries.length})
           </div>
         </aside>
 
@@ -454,6 +464,65 @@ export default function AdminDashboard({ user }) {
                   <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>"{rev.comment}"</p>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* BULK ENQUIRIES TAB */}
+          {activeTab === 'enquiries' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Bulk Order Enquiries</h3>
+                <span className="badge" style={{ backgroundColor: 'var(--accent-color)', color: 'var(--white)', padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderRadius: '12px' }}>
+                  {enquiries.length} Enquiries Received
+                </span>
+              </div>
+              
+              <div className="table-responsive" style={{ background: 'var(--white)', padding: '1rem', borderRadius: 'var(--border-radius)', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
+                {enquiries.length === 0 ? (
+                  <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No bulk enquiries received yet.</p>
+                ) : (
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Date Received</th>
+                        <th>Client Details</th>
+                        <th>Event Date</th>
+                        <th>Quantity</th>
+                        <th>Notes & Requirements</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {enquiries.map(enq => (
+                        <tr key={enq.id}>
+                          <td>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {new Date(enq.created_at).toLocaleString()}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: '700' }}>{enq.name}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{enq.email}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--accent-color)', fontWeight: '600' }}>{enq.phone}</div>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: '600' }}>
+                              {new Date(enq.event_date).toLocaleDateString()}
+                            </div>
+                          </td>
+                          <td>
+                            <span className="status-pill status-ready" style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
+                              {enq.quantity} units
+                            </span>
+                          </td>
+                          <td style={{ maxWidth: '300px', fontSize: '0.85rem', whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                            {enq.notes || <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>No additional notes</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
           )}
 
