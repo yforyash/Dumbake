@@ -1,0 +1,73 @@
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { X, Plus, Minus, ShoppingCart } from 'lucide-react';
+
+export default function CartModal({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) {
+  const navigate = useNavigate();
+
+  if (!isOpen) return null;
+
+  const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
+  const handleCheckoutClick = () => {
+    onClose();
+    navigate('/checkout');
+  };
+
+  return (
+    <div className="cart-overlay" onClick={onClose}>
+      <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="cart-header">
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShoppingCart size={20} style={{ color: 'var(--accent-color)' }} />
+            Your Basket
+          </h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-color)' }}>
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="cart-items">
+          {cartItems.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>🍰 Your basket is empty</p>
+              <p style={{ fontSize: '0.9rem' }}>Add some fresh bakes from our home menu!</p>
+            </div>
+          ) : (
+            cartItems.map((item) => (
+              <div key={item.id} className="cart-item">
+                <img src={item.image_url} alt={item.name} className="cart-item-img" />
+                <div className="cart-item-details">
+                  <h4 className="cart-item-title">{item.name}</h4>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px' }}>{item.category}</p>
+                  <p style={{ fontWeight: '700', color: 'var(--accent-color)' }}>₹{item.price}</p>
+                </div>
+                <div className="quantity-controls">
+                  <button onClick={() => onUpdateQuantity(item.id, item.quantity - 1)} className="quantity-btn">
+                    <Minus size={12} />
+                  </button>
+                  <span className="quantity-count">{item.quantity}</span>
+                  <button onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} className="quantity-btn">
+                    <Plus size={12} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {cartItems.length > 0 && (
+          <div className="cart-footer">
+            <div className="cart-total">
+              <span>Subtotal:</span>
+              <span className="text-accent">₹{subtotal.toFixed(2)}</span>
+            </div>
+            <button onClick={handleCheckoutClick} className="btn btn-primary" style={{ width: '100%', padding: '1rem' }}>
+              Proceed to Checkout
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
