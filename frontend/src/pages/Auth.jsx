@@ -63,8 +63,10 @@ export default function Auth({ onLoginSuccess }) {
                   }
                 } catch (e) {
                   setError(e.message);
-                  if (e.message.includes('not verified') || e.message.includes('verification')) {
+                  if (e.unverified) {
                     setRegisteredEmail(values.email);
+                    const codeMsg = e.verificationCode ? ` Verification Code (for testing): ${e.verificationCode}` : '';
+                    setSuccess(`Please enter the 6-digit verification code to activate your account.${codeMsg}`);
                     setMode('verify');
                   }
                 }

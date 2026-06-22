@@ -52,9 +52,27 @@ router.post('/register', async (req, res) => {
     const { name, email, passwordHash } = req.body;
     
     // Check if user already exists
-    const exists = await query('SELECT id FROM users WHERE email = $1', [email]);
+    const exists = await query('SELECT id, is_verified FROM users WHERE email = $1', [email]);
     if (exists.rows.length > 0) {
-      return res.status(400).json({ error: 'Email already registered' });
+      const existingUser = exists.rows[0];
+      if (existingUser.is_verified) {
+        return res.status(400).json({ error: 'Email already registered' });
+      } else {
+        // Unverified user: update their details, generate a new code, and proceed!
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const result = await query(
+          `UPDATE users 
+           SET name = $1, password_hash = $2, verification_code = $3 
+           WHERE email = $4 
+           RETURNING id, name, email, role, wallet_balance, is_verified`,
+          [name, passwordHash, code, email]
+        );
+        await sendVerificationEmail(email, code);
+        return res.status(201).json({
+          ...result.rows[0],
+          verificationCode: code
+        });
+      }
     }
 
     // Generate 6-digit verification code
@@ -126,9 +144,14 @@ router.post('/login', async (req, res) => {
     }
 
     if (!user.is_verified) {
+      // Regenerate verification code on login trigger so they can verify!
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      await query('UPDATE users SET verification_code = $1 WHERE email = $2', [code, email]);
+      await sendVerificationEmail(email, code);
       return res.status(400).json({
         error: 'Email address not verified. Please verify your email first.',
-        unverified: true
+        unverified: true,
+        verificationCode: code
       });
     }
     

@@ -23,7 +23,12 @@ export async function loginUser(email, passwordHash) {
     body: JSON.stringify({ email, passwordHash }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Login failed');
+  if (!res.ok) {
+    const err = new Error(data.error || 'Login failed');
+    err.unverified = data.unverified;
+    err.verificationCode = data.verificationCode;
+    throw err;
+  }
   return data;
 }
 
