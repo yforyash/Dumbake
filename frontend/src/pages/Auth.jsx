@@ -252,9 +252,15 @@ export default function Auth({ onLoginSuccess }) {
                 setError('');
                 setSuccess('');
                 try {
-                  await verifyEmail(registeredEmail, values.code);
-                  setSuccess('Email verified successfully! You can now log in.');
-                  setMode('login');
+                  const response = await verifyEmail(registeredEmail, values.code);
+                  setSuccess('Email verified successfully!');
+                  if (response.user) {
+                    localStorage.setItem('dumbake_user', JSON.stringify(response.user));
+                    onLoginSuccess(response.user);
+                    navigate('/');
+                  } else {
+                    setMode('login');
+                  }
                 } catch (e) {
                   setError(e.message);
                 }
