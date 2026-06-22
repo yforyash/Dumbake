@@ -91,6 +91,29 @@ async function initDatabase() {
       );
     `);
 
+    // 6. Subscribers Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS subscribers (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 7. Bulk Enquiries Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS bulk_enquiries (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) NOT NULL,
+        phone VARCHAR(20) NOT NULL,
+        event_date DATE NOT NULL,
+        quantity INTEGER NOT NULL,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Seed bakery items
     await seedBakeryItems();
 

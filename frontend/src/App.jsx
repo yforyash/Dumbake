@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import CartModal from './components/CartModal';
+import Footer from './components/Footer';
 import Home from './pages/Home';
 import Auth from './pages/Auth';
 import Checkout from './pages/Checkout';
@@ -162,6 +163,9 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>
+
+        {/* Global Page Footer */}
+        <Footer />
 
         {/* Mobile Bottom Bar navigation */}
         <BottomNav 

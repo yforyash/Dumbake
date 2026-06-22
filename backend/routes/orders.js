@@ -130,4 +130,25 @@ router.put('/:id/status', authenticate, requireRole(['admin', 'bakery_owner']), 
   }
 });
 
+// Submit bulk order enquiry
+router.post('/bulk-enquiry', async (req, res) => {
+  try {
+    const { name, email, phone, eventDate, quantity, notes } = req.body;
+    if (!name || !email || !phone || !eventDate || !quantity) {
+      return res.status(400).json({ error: 'All fields except notes are required.' });
+    }
+
+    const result = await query(
+      `INSERT INTO bulk_enquiries (name, email, phone, event_date, quantity, notes)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [name, email, phone, eventDate, parseInt(quantity), notes || '']
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

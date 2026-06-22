@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Sparkles, Leaf, Plus, Star, MessageSquarePlus, RefreshCw, Send, Check } from 'lucide-react';
-import { fetchItems, fetchAIRecommendations, postReview, fetchReviews } from '../services/api';
+import { fetchItems, fetchAIRecommendations, postReview, fetchReviews, submitBulkEnquiry } from '../services/api';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 
@@ -152,7 +152,7 @@ export default function Home({ user, onAddToCart }) {
             </h3>
             <button 
               onClick={() => {
-                setCategory('Breads & Croissants');
+                setCategory('Pastries & Cookies');
                 document.getElementById('menu-catalog')?.scrollIntoView({ behavior: 'smooth' });
               }} 
               className="btn btn-primary" 
@@ -493,7 +493,7 @@ export default function Home({ user, onAddToCart }) {
         {/* Col 3: Owner Quote */}
         <div className="story-col-dark" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#ffffff' }}>
           <h4 style={{ fontSize: '1.8rem', fontWeight: '800', marginBottom: '1.25rem' }}>
-            Meet the Maker – Priya
+            Meet the Maker – Ishika
           </h4>
           <p style={{ fontSize: '1rem', fontStyle: 'italic', lineHeight: '1.6', marginBottom: '1.5rem', opacity: 0.95, color: '#ffffff !important' }}>
             "Baking brings me absolute peace and happiness. Whisking fresh batters, layering chocolates, and creating customized treats for Ranchi celebrations is where I feel most at home."
@@ -612,7 +612,7 @@ export default function Home({ user, onAddToCart }) {
                 {!user && (
                   <div className="form-group">
                     <label className="form-label">Your Name</label>
-                    <Field name="reviewerName" type="text" className="form-input" placeholder="E.g., Priya S." />
+                    <Field name="reviewerName" type="text" className="form-input" placeholder="E.g., Ishika S." />
                     <ErrorMessage name="reviewerName" component="div" style={{ color: 'var(--accent-color)', fontSize: '0.75rem', marginTop: '4px' }} />
                   </div>
                 )}
@@ -707,7 +707,7 @@ export default function Home({ user, onAddToCart }) {
                   <input 
                     type="text" 
                     maxLength={30}
-                    placeholder="E.g., Happy Birthday Priya!"
+                    placeholder="E.g., Happy Birthday Ishika!"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     className="form-input"
@@ -789,12 +789,24 @@ export default function Home({ user, onAddToCart }) {
               <Formik
                 initialValues={{ name: '', email: '', phone: '', eventDate: '', quantity: 10, notes: '' }}
                 validationSchema={bulkValidationSchema}
-                onSubmit={(values, { setSubmitting, resetForm }) => {
-                  setTimeout(() => {
+                onSubmit={async (values, { setSubmitting, resetForm }) => {
+                  try {
+                    const payload = {
+                      name: values.name,
+                      email: values.email,
+                      phone: values.phone,
+                      eventDate: values.eventDate,
+                      quantity: parseInt(values.quantity),
+                      notes: values.notes
+                    };
+                    await submitBulkEnquiry(payload);
                     setBulkSuccess(true);
                     resetForm();
+                  } catch (err) {
+                    alert(err.message || 'Failed to submit bulk order enquiry. Please try again.');
+                  } finally {
                     setSubmitting(false);
-                  }, 800);
+                  }
                 }}
               >
                 {({ isSubmitting }) => (

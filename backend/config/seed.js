@@ -62,7 +62,7 @@ const initialItems = [
     stock_quantity: 10
   },
   {
-    name: 'Priya\'s Handcrafted Mango Cake (Seasonal)',
+    name: 'Ishika\'s Handcrafted Mango Cake (Seasonal)',
     description: 'Light sponge cake layered with fresh local Ranchi mango pulp and dairy-whipped cream.',
     price: 850.00,
     category: 'Cakes',

@@ -47,7 +47,7 @@ const mockState = {
     { id: 4, name: 'Classic Chocolate Fudge Brownies', description: 'Rich, intense dark chocolate brownies with a perfectly glossy, paper-thin crinkle crust.', price: 120.00, category: 'Brownies', image_url: '/dumbake_brownies.png', is_eggless: true, is_bestseller: true, stock_quantity: 25, status: 'available' },
     { id: 5, name: 'Walnut Fudge Brownies', description: 'Ultra-fudgy chocolate brownie loaded with roasted premium walnut pieces.', price: 140.00, category: 'Brownies', image_url: '/dumbake_brownies.png', is_eggless: true, is_bestseller: false, stock_quantity: 15, status: 'available' },
     { id: 6, name: 'Overloaded Biscoff Brownies', description: 'Decadent dark chocolate brownie slab filled with melted cookie butter swirls.', price: 160.00, category: 'Brownies', image_url: '/dumbake_brownies.png', is_eggless: true, is_bestseller: false, stock_quantity: 10, status: 'available' },
-    { id: 7, name: 'Priya\'s Handcrafted Mango Cake (Seasonal)', description: 'Light sponge cake layered with fresh local Ranchi mango pulp and dairy-whipped cream.', price: 850.00, category: 'Cakes', image_url: '/dumbake_mango_cake.png', is_eggless: true, is_bestseller: true, stock_quantity: 10, status: 'available' },
+    { id: 7, name: 'Ishika\'s Handcrafted Mango Cake (Seasonal)', description: 'Light sponge cake layered with fresh local Ranchi mango pulp and dairy-whipped cream.', price: 850.00, category: 'Cakes', image_url: '/dumbake_mango_cake.png', is_eggless: true, is_bestseller: true, stock_quantity: 10, status: 'available' },
     { id: 8, name: 'Dumbake Rose Celebration Cake', description: 'Elegant double-layered custom cake decorated with pretty pink rose icing and filled with milk chocolate ganache.', price: 750.00, category: 'Cakes', image_url: '/dumbake_bento_cake.png', is_eggless: true, is_bestseller: true, stock_quantity: 8, status: 'available' },
     { id: 9, name: 'Belgian Truffle Dream Cake', description: 'Decadent five-layer chocolate cake layered with smooth dark Belgian chocolate ganache.', price: 800.00, category: 'Cakes', image_url: '/dumbake_mango_cake.png', is_eggless: true, is_bestseller: false, stock_quantity: 5, status: 'available' },
     { id: 10, name: 'Minimalist Pastel Bento Cake', description: 'Cute 250g lunchbox cake in pastel pink with personalized text, perfect for mini celebrations.', price: 350.00, category: 'Cakes', image_url: '/dumbake_bento_cake.png', is_eggless: true, is_bestseller: false, stock_quantity: 12, status: 'available' },
@@ -65,7 +65,9 @@ const mockState = {
     { id: 1, reviewer_name: 'Ananya K.', rating: 5, comment: 'The butter croissant was absolutely flakey and delicious! Feels like Paris.', created_at: new Date() },
     { id: 2, reviewer_name: 'Rohan M.', rating: 4, comment: 'Truffle cake is decadent, highly recommend it.', created_at: new Date() }
   ],
-  resets: []
+  resets: [],
+  subscribers: [],
+  bulk_enquiries: []
 };
 
 async function query(text, params) {
@@ -167,6 +169,35 @@ function runMockQuery(text, params) {
     };
     mockState.reviews.push(newReview);
     return { rows: [newReview] };
+  }
+
+  // 8. INSERT INTO subscribers
+  if (norm.includes('insert into subscribers')) {
+    const [email] = params;
+    const newSub = {
+      id: mockState.subscribers.length + 1,
+      email,
+      created_at: new Date()
+    };
+    mockState.subscribers.push(newSub);
+    return { rows: [newSub] };
+  }
+
+  // 9. INSERT INTO bulk_enquiries
+  if (norm.includes('insert into bulk_enquiries')) {
+    const [name, email, phone, eventDate, quantity, notes] = params;
+    const newEnq = {
+      id: mockState.bulk_enquiries.length + 1,
+      name,
+      email,
+      phone,
+      event_date: eventDate,
+      quantity,
+      notes,
+      created_at: new Date()
+    };
+    mockState.bulk_enquiries.push(newEnq);
+    return { rows: [newEnq] };
   }
 
   // Fallback default response

@@ -203,3 +203,25 @@ export async function fetchAIBestsellers() {
   if (!res.ok) throw new Error(data.error || 'Fetch bestsellers failed');
   return data;
 }
+
+export async function subscribeNewsletter(email) {
+  const res = await fetch(`${BASE_URL}/auth/subscribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Subscription failed');
+  return data;
+}
+
+export async function submitBulkEnquiry(enquiryData) {
+  const res = await fetch(`${BASE_URL}/orders/bulk-enquiry`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(enquiryData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Enquiry submission failed');
+  return data;
+}

@@ -129,4 +129,23 @@ router.get('/profile', authenticate, (req, res) => {
   res.json(req.user);
 });
 
+// Newsletter subscription
+router.post('/subscribe', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    await query(
+      `INSERT INTO subscribers (email) VALUES ($1) ON CONFLICT (email) DO NOTHING`,
+      [email]
+    );
+
+    res.status(201).json({ message: 'Subscribed successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
