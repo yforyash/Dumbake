@@ -12,11 +12,15 @@ export default function Header({ user, onLogout, cartCount, onCartClick }) {
   };
 
   return (
-    <header className="header">
-      <div className="header-container">
-        <Link to="/" className="logo">
-          🍰 <span>Dumbake</span>
-        </Link>
+    <>
+      <div className="announcement-bar">
+        <span>✨ Same-Day Cake Delivery in Ranchi. Baked fresh daily with premium ingredients! ✨</span>
+      </div>
+      <header className="header">
+        <div className="header-container">
+          <Link to="/" className="logo" style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 'bold' }}>
+            Dumbake
+          </Link>
 
         <nav className="nav-links">
           <Link to="/" className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}>
@@ -101,5 +105,6 @@ export default function Header({ user, onLogout, cartCount, onCartClick }) {
         </div>
       </div>
     </header>
+    </>
   );
 }

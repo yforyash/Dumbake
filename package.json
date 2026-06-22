@@ -9,6 +9,7 @@
     "dev": "concurrently \"npm run backend\" \"npm run frontend\""
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "vercel": "^54.14.5"
   }
 }

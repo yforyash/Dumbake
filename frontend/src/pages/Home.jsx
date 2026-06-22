@@ -72,7 +72,7 @@ export default function Home({ user, onAddToCart }) {
     loadData();
   };
 
-  const categoriesList = ['Cakes', 'Pastries', 'Breads', 'Cookies', 'Savories'];
+  const categoriesList = ['Cakes', 'Pastries', 'Breads & Croissants', 'Chocolates', 'Savory Danishes', 'Gift Boxes'];
 
   // Yup validation schema for customer review log
   const reviewValidationSchema = Yup.object().shape({
@@ -81,36 +81,47 @@ export default function Home({ user, onAddToCart }) {
     comment: Yup.string().min(5, 'Feedback must be at least 5 characters').required('Feedback comment is required')
   });
 
+  const categoryItems = [
+    { name: 'Cakes', image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=120&h=120&fit=crop&q=80' },
+    { name: 'Pastries', image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=120&h=120&fit=crop&q=80' },
+    { name: 'Breads & Croissants', image: 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?w=120&h=120&fit=crop&q=80' },
+    { name: 'Chocolates', image: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=120&h=120&fit=crop&q=80' },
+    { name: 'Savory Danishes', image: 'https://images.unsplash.com/photo-1601050690597-df056fb4ce78?w=120&h=120&fit=crop&q=80' },
+    { name: 'Gift Boxes', image: 'https://images.unsplash.com/photo-1569864358642-9d1684040f43?w=120&h=120&fit=crop&q=80' }
+  ];
+
   return (
     <div className="container">
       {/* 1. Hero Section */}
       <section className="hero">
-        <h2 className="hero-subtitle">Est. 2026</h2>
+        <h2 className="hero-subtitle">CRAFTED WITH FLAKY FLOUR & PREMIUM COCOA</h2>
         <h1 className="title-large" style={{ fontSize: '3rem', maxWidth: '800px' }}>
-          Crafting Flaky Delights & Creamy <span className="text-accent">Aura</span> Daily.
+          Best Bakery in Gurgaon | Order Cakes, Breads & Chocolates
         </h1>
         <p style={{ maxWidth: '600px', fontSize: '1.1rem', marginTop: '1rem', marginBottom: '1.5rem' }}>
-          Welcome to Dumbake. Our flour, butter, and sugar are transformed daily into premium French croissants, artisan sourdoughs, and celebration cakes.
+          Enjoy same-day cake delivery in Gurgaon & NCR with Dumbake. Freshly baked artisan cakes, classic sourdough, French pastries & fine chocolates.
         </p>
         <div style={{ display: 'flex', gap: '10px' }}>
           <a href="#menu-catalog" className="btn btn-primary">Browse Menu</a>
           <button onClick={loadData} className="btn btn-secondary" style={{ padding: '0.6rem 0.8rem' }}>
-            <RefreshCw size={16} /> Reload AI
+            <RefreshCw size={16} /> Refresh
           </button>
         </div>
       </section>
 
-      {/* 2. AI Recommendation Slider */}
+      {/* 2. Recommendation Slider */}
       {aiRecs.length > 0 && (
         <section className="ai-carousel-container">
           <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Sparkles size={20} style={{ color: 'var(--accent-color)' }} />
-            Chef AI's Recommendations
+            Chef's Recommendations
           </h3>
           <div className="grid grid-3">
             {aiRecs.map(item => (
               <div key={`ai-${item.id}`} className="card" style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '160px', objectFit: 'cover' }} />
+                <div className="card-img-wrapper" style={{ height: '160px' }}>
+                  <img src={item.image_url} alt={item.name} />
+                </div>
                 <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <h4 style={{ fontSize: '1.1rem', fontFamily: 'var(--font-sans)', fontWeight: '700' }}>{item.name}</h4>
@@ -144,24 +155,29 @@ export default function Home({ user, onAddToCart }) {
           <h3 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Artisan Catalog</h3>
           
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', justifyContent: 'space-between', alignItems: 'center' }}>
-            {/* Category tabs */}
-            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '5px', maxWidth: '100%' }}>
-              <button 
+            {/* Circular Category items selector */}
+            <div className="category-circle-list">
+              <div 
                 onClick={() => setCategory('')} 
-                className={`btn ${category === '' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                className={`category-circle-item ${category === '' ? 'active' : ''}`}
               >
-                All Items
-              </button>
-              {categoriesList.map(cat => (
-                <button 
-                  key={cat}
-                  onClick={() => setCategory(cat)} 
-                  className={`btn ${category === cat ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', whiteSpace: 'nowrap' }}
+                <div className="category-circle-img-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--secondary-color)', fontSize: '1.5rem' }}>
+                  🧁
+                </div>
+                <span className="category-circle-label">All Bakes</span>
+              </div>
+              
+              {categoryItems.map(cat => (
+                <div 
+                  key={cat.name}
+                  onClick={() => setCategory(cat.name)} 
+                  className={`category-circle-item ${category === cat.name ? 'active' : ''}`}
                 >
-                  {cat}
-                </button>
+                  <div className="category-circle-img-wrapper">
+                    <img src={cat.image} alt={cat.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  <span className="category-circle-label">{cat.name}</span>
+                </div>
               ))}
             </div>
 
@@ -217,7 +233,9 @@ export default function Home({ user, onAddToCart }) {
                   )}
                 </div>
 
-                <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
+                <div className="card-img-wrapper">
+                  <img src={item.image_url} alt={item.name} />
+                </div>
                 
                 <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
                   <h4 style={{ fontFamily: 'var(--font-sans)', fontSize: '1.1rem', fontWeight: '700', marginBottom: '4px' }}>{item.name}</h4>
@@ -238,6 +256,30 @@ export default function Home({ user, onAddToCart }) {
             ))}
           </div>
         )}
+      </section>
+
+      {/* WhatsApp Custom Order Banner */}
+      <section style={{ 
+        marginTop: '3.5rem', 
+        padding: '2.5rem 1.5rem', 
+        background: 'linear-gradient(135deg, #FFF0F2 0%, #FFFDFD 100%)', 
+        borderRadius: 'var(--border-radius-lg)', 
+        border: '1px dashed var(--accent-color)', 
+        textAlign: 'center' 
+      }}>
+        <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.75rem', marginBottom: '0.5rem' }}>🎂 Bespoke Celebration Cakes</h3>
+        <p style={{ maxWidth: '600px', margin: '0 auto 1.5rem auto', fontSize: '0.95rem' }}>
+          Have a specific design, tier height, or custom flavor profile in mind? Connect directly with our chief designer pastry chef via WhatsApp to detail your dream cake.
+        </p>
+        <a 
+          href="https://wa.me/919999988888?text=Hello%20Dumbake!%20I%20would%20like%20to%20order%20a%20custom%20celebration%20cake." 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="btn btn-primary"
+          style={{ background: '#25D366', borderColor: '#25D366', color: 'white' }}
+        >
+          WhatsApp Chef (+91 99999 88888)
+        </a>
       </section>
 
       {/* 4. Customer Reviews & Submission */}
