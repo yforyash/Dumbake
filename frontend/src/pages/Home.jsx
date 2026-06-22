@@ -19,6 +19,31 @@ export default function Home({ user, onAddToCart }) {
   const [reviewError, setReviewError] = useState('');
   const [reviewSuccess, setReviewSuccess] = useState('');
 
+  // Customize Modal States
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [weight, setWeight] = useState('0.5 Kg');
+  const [egglessChoice, setEgglessChoice] = useState(true);
+  const [message, setMessage] = useState('');
+  const [instructions, setInstructions] = useState('');
+
+  const handleOpenCustomizeModal = (item) => {
+    setSelectedItem(item);
+    setWeight('0.5 Kg');
+    setEgglessChoice(item.is_eggless);
+    setMessage('');
+    setInstructions('');
+  };
+
+  const handleConfirmAdd = () => {
+    onAddToCart(selectedItem, {
+      weight: selectedItem.category === 'Cakes' ? weight : null,
+      eggless: egglessChoice,
+      message: selectedItem.category === 'Cakes' ? message : null,
+      instructions
+    });
+    setSelectedItem(null);
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -100,7 +125,7 @@ export default function Home({ user, onAddToCart }) {
                   </div>
 
                   <button 
-                    onClick={() => onAddToCart(item)}
+                    onClick={() => handleOpenCustomizeModal(item)}
                     className="btn btn-primary" 
                     style={{ width: '100%', padding: '0.5rem', marginTop: '1rem', fontSize: '0.85rem' }}
                   >
@@ -201,7 +226,7 @@ export default function Home({ user, onAddToCart }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
                     <span className="text-accent" style={{ fontWeight: '800', fontSize: '1.25rem' }}>₹{item.price}</span>
                     <button 
-                      onClick={() => onAddToCart(item)}
+                      onClick={() => handleOpenCustomizeModal(item)}
                       className="btn btn-secondary" 
                       style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
                     >
@@ -315,6 +340,112 @@ export default function Home({ user, onAddToCart }) {
           </Formik>
         </div>
       </section>
+
+      {/* Product Customize Modal */}
+      {selectedItem && (
+        <div className="dialog-overlay" onClick={() => setSelectedItem(null)}>
+          <div className="dialog-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <h3 style={{ fontSize: '1.6rem', fontFamily: 'var(--font-serif)', marginBottom: '0.5rem' }}>
+              Customize {selectedItem.name}
+            </h3>
+            <p style={{ fontSize: '0.9rem', marginBottom: '1.25rem' }}>{selectedItem.description}</p>
+            
+            <div style={{ display: 'flex', gap: '15px', marginBottom: '1.25rem' }}>
+              <img src={selectedItem.image_url} alt={selectedItem.name} style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '8px' }} />
+              <div>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Base Price</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--accent-color)' }}>₹{selectedItem.price}</div>
+                <div style={{ fontSize: '0.75rem', marginTop: '5px' }}>
+                  {selectedItem.is_eggless ? '🟢 100% Eggless Recipe' : '🔴 Contains Egg Options'}
+                </div>
+              </div>
+            </div>
+
+            {/* Customization Options */}
+            {selectedItem.category === 'Cakes' && (
+              <>
+                <div className="form-group">
+                  <label className="form-label">Select Cake Weight</label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    {['0.5 Kg', '1 Kg'].map(w => (
+                      <button 
+                        key={w}
+                        type="button" 
+                        onClick={() => setWeight(w)}
+                        className={`btn ${weight === w ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{ flex: 1, padding: '0.5rem' }}
+                      >
+                        {w} {w === '1 Kg' ? '(+ ₹400)' : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Message on Cake (Max 30 chars)</label>
+                  <input 
+                    type="text" 
+                    maxLength={30}
+                    placeholder="Happy Birthday Priya!"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="form-input"
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="form-group">
+              <label className="form-label">Recipe Preference</label>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setEgglessChoice(true)}
+                  className={`btn ${egglessChoice ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ flex: 1, padding: '0.5rem' }}
+                >
+                  🟢 Eggless
+                </button>
+                <button 
+                  type="button" 
+                  disabled={selectedItem.is_eggless}
+                  onClick={() => setEgglessChoice(false)}
+                  className={`btn ${!egglessChoice ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ flex: 1, padding: '0.5rem' }}
+                >
+                  🔴 Regular
+                </button>
+              </div>
+              {selectedItem.is_eggless && (
+                <div style={{ fontSize: '0.75rem', color: '#1A8245', marginTop: '4px' }}>
+                  * This item is strictly eggless and cannot be baked with egg.
+                </div>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Special Baking Instructions / Notes</label>
+              <input 
+                type="text" 
+                placeholder="E.g., Pack separately, make it less sweet"
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                className="form-input"
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '15px', marginTop: '1.5rem' }}>
+              <button type="button" onClick={() => setSelectedItem(null)} className="btn btn-secondary" style={{ flex: 1 }}>
+                Cancel
+              </button>
+              <button type="button" onClick={handleConfirmAdd} className="btn btn-primary" style={{ flex: 1 }}>
+                Add to Basket (₹{(parseFloat(selectedItem.price) + (selectedItem.category === 'Cakes' && weight === '1 Kg' ? 400.00 : 0.00)).toFixed(2)})
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

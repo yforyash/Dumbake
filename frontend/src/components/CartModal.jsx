@@ -35,19 +35,30 @@ export default function CartModal({ isOpen, onClose, cartItems, onUpdateQuantity
             </div>
           ) : (
             cartItems.map((item) => (
-              <div key={item.id} className="cart-item">
+              <div key={item.cartKey} className="cart-item">
                 <img src={item.image_url} alt={item.name} className="cart-item-img" />
                 <div className="cart-item-details">
                   <h4 className="cart-item-title">{item.name}</h4>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px' }}>{item.category}</p>
-                  <p style={{ fontWeight: '700', color: 'var(--accent-color)' }}>₹{item.price}</p>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '2px' }}>
+                    {item.category} {item.customizations?.weight ? `| ${item.customizations.weight}` : ''}
+                  </p>
+                  
+                  {item.customizations && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--accent-color)', marginBottom: '4px' }}>
+                      {item.customizations.eggless ? '🟢 Eggless' : '🔴 Contains Egg'}
+                      {item.customizations.message && ` | "${item.customizations.message}"`}
+                      {item.customizations.instructions && ` | Note: ${item.customizations.instructions}`}
+                    </div>
+                  )}
+                  
+                  <p style={{ fontWeight: '700', color: 'var(--text-color)' }}>₹{item.price}</p>
                 </div>
                 <div className="quantity-controls">
-                  <button onClick={() => onUpdateQuantity(item.id, item.quantity - 1)} className="quantity-btn">
+                  <button onClick={() => onUpdateQuantity(item.cartKey, item.quantity - 1)} className="quantity-btn">
                     <Minus size={12} />
                   </button>
                   <span className="quantity-count">{item.quantity}</span>
-                  <button onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} className="quantity-btn">
+                  <button onClick={() => onUpdateQuantity(item.cartKey, item.quantity + 1)} className="quantity-btn">
                     <Plus size={12} />
                   </button>
                 </div>

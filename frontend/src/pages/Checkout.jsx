@@ -413,10 +413,18 @@ export default function Checkout({ user, cartItems, onClearCart }) {
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.5rem' }}>
               {cartItems.map(item => (
-                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div key={item.cartKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
                     <span style={{ fontWeight: '600' }}>{item.name}</span>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginLeft: '10px' }}>x{item.quantity}</span>
+                    {item.customizations && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--accent-color)', marginTop: '2px' }}>
+                        {item.customizations.weight ? `${item.customizations.weight} | ` : ''}
+                        {item.customizations.eggless ? '🟢 Eggless' : '🔴 With Egg'}
+                        {item.customizations.message && ` | "${item.customizations.message}"`}
+                        {item.customizations.instructions && ` | Note: ${item.customizations.instructions}`}
+                      </div>
+                    )}
                   </div>
                   <span style={{ fontWeight: '600' }}>₹{(item.price * item.quantity).toFixed(2)}</span>
                 </div>

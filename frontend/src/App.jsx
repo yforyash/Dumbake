@@ -65,34 +65,39 @@ export default function App() {
     saveCart([]); // clear cart on logout
   };
 
-  const handleAddToCart = (item) => {
-    const existing = cartItems.find((c) => c.id === item.id);
+  const handleAddToCart = (item, customizations = {}) => {
+    const cartKey = `${item.id}-${customizations.weight || 'Default'}-${customizations.eggless ? 'eggless' : 'egg'}-${customizations.message || ''}-${customizations.instructions || ''}`;
+
+    const existing = cartItems.find((c) => c.cartKey === cartKey);
     if (existing) {
       const updated = cartItems.map((c) => 
-        c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c
+        c.cartKey === cartKey ? { ...c, quantity: c.quantity + 1 } : c
       );
       saveCart(updated);
     } else {
-      saveCart([...cartItems, { ...item, quantity: 1 }]);
+      let finalPrice = parseFloat(item.price);
+      if (customizations.weight === '1 Kg') {
+        finalPrice += 400.00; // Add 400 for 1 Kg cakes
+      }
+      saveCart([...cartItems, { ...item, cartKey, customizations, price: finalPrice, quantity: 1 }]);
     }
-    // Show toast or open cart
     setIsCartOpen(true);
   };
 
-  const handleUpdateCartQuantity = (id, quantity) => {
+  const handleUpdateCartQuantity = (cartKey, quantity) => {
     if (quantity <= 0) {
-      const filtered = cartItems.filter((c) => c.id !== id);
+      const filtered = cartItems.filter((c) => c.cartKey !== cartKey);
       saveCart(filtered);
     } else {
       const updated = cartItems.map((c) => 
-        c.id === id ? { ...c, quantity } : c
+        c.cartKey === cartKey ? { ...c, quantity } : c
       );
       saveCart(updated);
     }
   };
 
-  const handleRemoveFromCart = (id) => {
-    const filtered = cartItems.filter((c) => c.id !== id);
+  const handleRemoveFromCart = (cartKey) => {
+    const filtered = cartItems.filter((c) => c.cartKey !== cartKey);
     saveCart(filtered);
   };
 
