@@ -1,8 +1,50 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 const { query } = require('../config/db');
 const { authenticate } = require('../middlewares/auth');
+
+async function sendVerificationEmail(email, code) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.log(`[Email Simulator] Verification code for ${email} is: ${code}`);
+    return;
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    const mailOptions = {
+      from: `"Dumbake Ranchi" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Dumbake - Verify Your Account',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #f0f0f0; border-radius: 8px;">
+          <h2 style="color: #2e1503; text-align: center; font-family: Georgia, serif;">Dumbake 🍰</h2>
+          <p>Hi,</p>
+          <p>Thank you for signing up with Dumbake Ranchi! To activate your account, please enter the following 6-digit verification code on the registration page:</p>
+          <div style="font-size: 24px; font-weight: bold; text-align: center; color: #d4b1a5; background-color: #2e1503; padding: 15px; border-radius: 6px; letter-spacing: 5px; margin: 20px 0;">
+            ${code}
+          </div>
+          <p>This code is valid for 1 hour. If you didn't request this code, please ignore this email.</p>
+          <hr style="border: 0; border-top: 1px solid #eee; margin-top: 30px;" />
+          <p style="font-size: 12px; color: #999; text-align: center;">Dumbake Ranchi | Ranchi Store Support: +91 91514 63571</p>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`[Email] Verification email sent to ${email}`);
+  } catch (err) {
+    console.error('[Email Error] Failed to send verification email:', err.message);
+  }
+}
 
 // Register user
 router.post('/register', async (req, res) => {
@@ -27,7 +69,8 @@ router.post('/register', async (req, res) => {
       [name, email, passwordHash, code]
     );
 
-    console.log(`[Email Simulator] Verification code for ${email} is: ${code}`);
+    // Send verification email (calls real email if env credentials exist, logs to terminal console otherwise)
+    await sendVerificationEmail(email, code);
 
     res.status(201).json({
       ...result.rows[0],
