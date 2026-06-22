@@ -66,13 +66,13 @@ export default function Footer() {
               Dumbake has come a long way since 2015 and has gained a lot over the years. Today, it is recognized as one of the best bakeries in Ranchi. The increase in their loyal customers is one of the reasons why the bakery shares a discount for people who constantly appreciate the products.
             </p>
             <div className="footer-contacts">
-              <a href="tel:+919999988888" className="footer-contact-item">
+              <a href="tel:+919151463571" className="footer-contact-item">
                 <Phone size={14} className="icon-accent" />
-                <span>+91 99999 88888</span>
+                <span>+91 91514 63571</span>
               </a>
-              <a href="mailto:hello@dumbake.com" className="footer-contact-item">
+              <a href="mailto:yashagarwal1705@gmail.com" className="footer-contact-item">
                 <Mail size={14} className="icon-accent" />
-                <span>hello@dumbake.com</span>
+                <span>yashagarwal1705@gmail.com</span>
               </a>
             </div>
             <div className="footer-socials">
