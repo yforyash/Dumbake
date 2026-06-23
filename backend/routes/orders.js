@@ -12,7 +12,7 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(401).json({ error: 'Please sign in to place an order.' });
     }
 
-    const { items, totalPrice, deliveryType, address, paymentMethod, customerName, customerPhone, latitude, longitude } = req.body;
+    const { items, totalPrice, deliveryType, address, paymentMethod, customerName, customerPhone, latitude, longitude, payWithWallet } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ error: 'No items in the cart.' });
@@ -60,20 +60,34 @@ router.post('/', authenticate, async (req, res) => {
     const finalTotalPrice = parseFloat((calculatedSubtotal - discountAmount + deliveryCharge).toFixed(2));
 
     let paymentStatus = 'Pending';
-    if (paymentMethod === 'Wallet') {
-      if (parseFloat(req.user.wallet_balance) < finalTotalPrice) {
-        return res.status(400).json({ error: 'Insufficient wallet balance for this simulated transaction.' });
+    const userWalletBalance = parseFloat(req.user.wallet_balance || 0);
+    
+    let walletDeducted = 0;
+    let remainingPayable = finalTotalPrice;
+
+    if (payWithWallet) {
+      if (userWalletBalance >= finalTotalPrice) {
+        walletDeducted = finalTotalPrice;
+        remainingPayable = 0;
+      } else {
+        walletDeducted = userWalletBalance;
+        remainingPayable = parseFloat((finalTotalPrice - walletDeducted).toFixed(2));
       }
-      
-      // Deduct wallet balance
-      await query('UPDATE users SET wallet_balance = wallet_balance - $1 WHERE id = $2', [finalTotalPrice, userId]);
-      paymentStatus = 'Paid';
-    } else if (paymentMethod === 'Card' || paymentMethod === 'UPI') {
-      // Card / UPI payments are simulated as Paid without wallet deductions
+    }
+
+    if (walletDeducted > 0) {
+      await query('UPDATE users SET wallet_balance = wallet_balance - $1 WHERE id = $2', [walletDeducted, userId]);
+    }
+
+    if (remainingPayable === 0) {
       paymentStatus = 'Paid';
     } else {
-      // COD remains Pending without wallet deductions
-      paymentStatus = 'Pending';
+      const secondaryMethod = paymentMethod.includes(' + ') ? paymentMethod.split(' + ')[1] : paymentMethod;
+      if (secondaryMethod === 'Card' || secondaryMethod === 'UPI') {
+        paymentStatus = 'Paid';
+      } else {
+        paymentStatus = 'Pending';
+      }
     }
 
     // 3. Decrement stock quantities

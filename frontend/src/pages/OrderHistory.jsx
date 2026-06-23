@@ -51,13 +51,17 @@ function DeliveryTrackingMap({ order }) {
     deliveryBoyPos = customer;
   }
 
+  // Seeding mock delivery rider details
+  const riderName = "Amit Kumar";
+  const riderPhone = "+91 9151463571"; // Demo contact number
+
   return (
-    <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <span style={{ fontSize: '0.85rem', fontWeight: '850', color: 'var(--text-color)' }}>
-        🛵 Delivery Map Tracking
+    <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <span style={{ fontSize: '0.9rem', fontWeight: '850', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        🛵 Live Order Tracking Map
       </span>
       <div style={{
-        height: '240px',
+        height: '260px',
         borderRadius: '16px',
         overflow: 'hidden',
         border: '1.5px solid var(--border-color)',
@@ -86,8 +90,66 @@ function DeliveryTrackingMap({ order }) {
           color: 'var(--accent-color)'
         }}>
           {order.status === 'Placed' || order.status === 'Preparing' ? '🍰 Baking fresh in kitchen...' :
-           order.status === 'Ready' ? '🛵 Rider is on the way to Ranchi Mall...' :
+           order.status === 'Ready' ? '🛵 Rider is on the way to your address...' :
            '🎉 Order Delivered! Enjoy your bakes!'}
+        </div>
+      </div>
+
+      {/* Delivery boy info and Timeline */}
+      <div style={{
+        padding: '1.25rem',
+        borderRadius: '16px',
+        border: '1.5px solid var(--border-color)',
+        backgroundColor: 'var(--primary-light)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <div>
+            <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '800', color: 'var(--text-color)' }}>
+              Delivery Partner: {riderName}
+            </h5>
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Contact Number: {riderPhone}
+            </p>
+          </div>
+          {(order.status === 'Ready' || order.status === 'Delivered') && (
+            <a 
+              href={`tel:${riderPhone}`} 
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: 'var(--accent-color)',
+                color: '#ffffff',
+                padding: '8px 16px',
+                borderRadius: '12px',
+                textDecoration: 'none',
+                fontWeight: '700',
+                fontSize: '0.8rem',
+                boxShadow: 'var(--shadow-sm)',
+                transition: 'all 0.2s'
+              }}
+              className="btn"
+            >
+              📞 Call Amit
+            </a>
+          )}
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ fontSize: '0.85rem' }}>
+            📍 <strong>Delivery Address:</strong> {order.address}
+          </div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: '750', lineHeight: '1.4' }}>
+            <strong>Current Status:</strong> {
+              order.status === 'Placed' ? '⏳ Your order is placed and awaiting kitchen preparation.' :
+              order.status === 'Preparing' ? '🥣 Chef Ishika is mixing fresh ingredients and baking your treats.' :
+              order.status === 'Ready' ? `🛵 Rider Amit has loaded your bakes and is on the route to your location.` :
+              '🎉 Delivered! Enjoy your delicious bakes from Dumbake Ranchi.'
+            }
+          </div>
         </div>
       </div>
     </div>

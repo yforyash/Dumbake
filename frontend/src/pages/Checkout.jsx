@@ -76,6 +76,9 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
   const discountAmount = subtotal * (discountPercentage / 100);
   const discountedGrandTotal = subtotal - discountAmount + deliveryCharge;
 
+  const walletBalance = user ? parseFloat(user.wallet_balance) : 0;
+  const walletUsed = payWithWallet ? Math.min(walletBalance, discountedGrandTotal) : 0;
+  const remainingPayable = parseFloat((discountedGrandTotal - walletUsed).toFixed(2));
 
   const handleSubmitOrder = async (e) => {
     e.preventDefault();
@@ -96,30 +99,47 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
       return;
     }
 
-    if (paymentMethod === 'Wallet') {
-      if (parseFloat(user.wallet_balance) < discountedGrandTotal) {
-        setError('Insufficient wallet balance for this transaction.');
-        return;
+    if (payWithWallet) {
+      if (remainingPayable > 0) {
+        if (paymentMethod === 'Card') {
+          if (cardNumber.replace(/\s/g, '').length !== 16) {
+            setError('Please enter a valid 16-digit card number.');
+            return;
+          }
+          if (cardExpiry.length !== 5) {
+            setError('Please enter expiry in MM/YY format.');
+            return;
+          }
+          if (cardCvv.length !== 3) {
+            setError('Please enter a valid 3-digit CVV.');
+            return;
+          }
+        } else if (paymentMethod === 'UPI') {
+          if (!upiId.includes('@') || upiId.split('@')[0].length < 3) {
+            setError('Please enter a valid UPI ID (e.g. user@bank).');
+            return;
+          }
+        }
       }
-    }
-
-    if (paymentMethod === 'Card') {
-      if (cardNumber.replace(/\s/g, '').length !== 16) {
-        setError('Please enter a valid 16-digit card number.');
-        return;
-      }
-      if (cardExpiry.length !== 5) {
-        setError('Please enter expiry in MM/YY format.');
-        return;
-      }
-      if (cardCvv.length !== 3) {
-        setError('Please enter a valid 3-digit CVV.');
-        return;
-      }
-    } else if (paymentMethod === 'UPI') {
-      if (!upiId.includes('@') || upiId.split('@')[0].length < 3) {
-        setError('Please enter a valid UPI ID (e.g. user@bank).');
-        return;
+    } else {
+      if (paymentMethod === 'Card') {
+        if (cardNumber.replace(/\s/g, '').length !== 16) {
+          setError('Please enter a valid 16-digit card number.');
+          return;
+        }
+        if (cardExpiry.length !== 5) {
+          setError('Please enter expiry in MM/YY format.');
+          return;
+        }
+        if (cardCvv.length !== 3) {
+          setError('Please enter a valid 3-digit CVV.');
+          return;
+        }
+      } else if (paymentMethod === 'UPI') {
+        if (!upiId.includes('@') || upiId.split('@')[0].length < 3) {
+          setError('Please enter a valid UPI ID (e.g. user@bank).');
+          return;
+        }
       }
     }
 
@@ -130,16 +150,21 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
         ? `${activeAddress.address_line} | Scheduled: ${deliveryDate} (${deliveryTimeSlot})`
         : `Store Pickup | Scheduled: ${deliveryDate} (${deliveryTimeSlot})`;
 
+      const finalPaymentMethod = payWithWallet
+        ? (remainingPayable === 0 ? 'Wallet' : `Wallet + ${paymentMethod}`)
+        : paymentMethod;
+
       const orderPayload = {
         items: cartItems.map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, customizations: i.customizations })),
         totalPrice: discountedGrandTotal,
         deliveryType,
         address: finalAddress,
-        paymentMethod,
+        paymentMethod: finalPaymentMethod,
         customerName,
         customerPhone,
         latitude: deliveryType === 'Delivery' && activeAddress ? activeAddress.latitude : null,
-        longitude: deliveryType === 'Delivery' && activeAddress ? activeAddress.longitude : null
+        longitude: deliveryType === 'Delivery' && activeAddress ? activeAddress.longitude : null,
+        payWithWallet
       };
 
 
@@ -370,17 +395,21 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
               <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <ShieldCheck size={20} style={{ color: '#1A8245' }} /> Secure Payment Gateways
               </h3>
-              
-              {user && (
+                        {user && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '1rem', background: 'var(--primary-light)', borderRadius: '12px', marginBottom: '1.5rem', border: '1.5px solid var(--border-color)' }}>
                   <input 
                     type="checkbox" 
                     id="pay-with-wallet"
                     checked={payWithWallet} 
                     onChange={(e) => {
-                      setPayWithWallet(e.target.checked);
-                      if (e.target.checked) {
-                        setPaymentMethod('Wallet');
+                      const checked = e.target.checked;
+                      setPayWithWallet(checked);
+                      if (checked) {
+                        if (walletBalance >= discountedGrandTotal) {
+                          setPaymentMethod('Wallet');
+                        } else {
+                          setPaymentMethod('COD');
+                        }
                       } else {
                         setPaymentMethod('COD');
                       }
@@ -390,50 +419,57 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
                   <label htmlFor="pay-with-wallet" style={{ fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '2px', width: '100%' }}>
                     <span style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                       <span>Pay using Dumbake Wallet</span>
-                      <span style={{ color: 'var(--accent-color)' }}>Balance: ₹{parseFloat(user.wallet_balance).toFixed(2)}</span>
+                      <span style={{ color: 'var(--accent-color)' }}>Balance: ₹{walletBalance.toFixed(2)}</span>
                     </span>
                     {payWithWallet && (
                       <span style={{ fontSize: '0.8rem', color: '#1A8245', fontWeight: '600', marginTop: '4px' }}>
-                        Deduction: -₹{discountedGrandTotal.toFixed(2)} | Remaining Balance: ₹{(user.wallet_balance - discountedGrandTotal).toFixed(2)}
+                        Deduction: -₹{walletUsed.toFixed(2)} | Remaining Balance: ₹{(walletBalance - walletUsed).toFixed(2)}
                       </span>
                     )}
                   </label>
                 </div>
               )}
               
-              {!payWithWallet ? (
-                <div className="payment-methods">
-                  <div 
-                    onClick={() => setPaymentMethod('Card')} 
-                    className={`payment-method-card ${paymentMethod === 'Card' ? 'selected' : ''}`}
-                  >
-                    <CreditCard size={20} style={{ margin: '0 auto 6px auto' }} />
-                    <span>Card</span>
-                  </div>
-                  <div 
-                    onClick={() => setPaymentMethod('UPI')} 
-                    className={`payment-method-card ${paymentMethod === 'UPI' ? 'selected' : ''}`}
-                  >
-                    <Smartphone size={20} style={{ margin: '0 auto 6px auto' }} />
-                    <span>UPI ID</span>
-                  </div>
-                  <div 
-                    onClick={() => setPaymentMethod('COD')} 
-                    className={`payment-method-card ${paymentMethod === 'COD' ? 'selected' : ''}`}
-                  >
-                    <DollarSign size={20} style={{ margin: '0 auto 6px auto' }} />
-                    <span>COD</span>
+              {remainingPayable > 0 ? (
+                <div>
+                  <p style={{ fontSize: '0.9rem', fontWeight: '750', marginBottom: '10px', color: 'var(--text-color)' }}>
+                    Choose payment method for the remaining ₹{remainingPayable.toFixed(2)}:
+                  </p>
+                  <div className="payment-methods">
+                    <div 
+                      onClick={() => setPaymentMethod('Card')} 
+                      className={`payment-method-card ${paymentMethod === 'Card' ? 'selected' : ''}`}
+                    >
+                      <CreditCard size={20} style={{ margin: '0 auto 6px auto' }} />
+                      <span>Card</span>
+                    </div>
+                    <div 
+                      onClick={() => setPaymentMethod('UPI')} 
+                      className={`payment-method-card ${paymentMethod === 'UPI' ? 'selected' : ''}`}
+                    >
+                      <Smartphone size={20} style={{ margin: '0 auto 6px auto' }} />
+                      <span>UPI ID</span>
+                    </div>
+                    <div 
+                      onClick={() => setPaymentMethod('COD')} 
+                      className={`payment-method-card ${paymentMethod === 'COD' ? 'selected' : ''}`}
+                    >
+                      <DollarSign size={20} style={{ margin: '0 auto 6px auto' }} />
+                      <span>COD</span>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <div style={{ padding: '1rem', background: '#E2F6E9', color: '#1A8245', borderRadius: '12px', border: '1.5px solid #1A8245', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700', fontSize: '0.9rem' }}>
-                  <span>✓ Dumbake Wallet payment active. Balance will be deducted automatically.</span>
-                </div>
+                payWithWallet && (
+                  <div style={{ padding: '1rem', background: '#E2F6E9', color: '#1A8245', borderRadius: '12px', border: '1.5px solid #1A8245', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700', fontSize: '0.9rem' }}>
+                    <span>✓ Fully paid using Dumbake Wallet. No further payment needed.</span>
+                  </div>
+                )
               )}
 
               {/* Card Inputs */}
-              {paymentMethod === 'Card' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {remainingPayable > 0 && paymentMethod === 'Card' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '1.5rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Credit / Debit Card Number (Masked)</label>
                     <input 
@@ -471,22 +507,21 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
               )}
 
               {/* UPI Inputs */}
-              {paymentMethod === 'UPI' && (
-                <div className="form-group" style={{ margin: 0 }}>
+              {remainingPayable > 0 && paymentMethod === 'UPI' && (
+                <div className="form-group" style={{ margin: 0, marginTop: '1.5rem' }}>
                   <label className="form-label">Virtual Payment Address (VPA / UPI ID)</label>
                   <input 
                     type="text" 
                     placeholder="yash@ybl"
                     value={upiId}
-                    onChange={handleUpipiId => handleUpiChange(upiId => handleUpiChange(upiId))} // wait, let's keep it simple
                     onChange={handleUpiChange}
                     className="form-input"
                   />
                 </div>
               )}
 
-              {paymentMethod === 'COD' && (
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              {remainingPayable > 0 && paymentMethod === 'COD' && (
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
                   Pay with Cash or UPI directly at your doorstep during delivery, or at the bakery counter during pickup.
                 </p>
               )}
@@ -532,10 +567,22 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
                 <span>Delivery Charge:</span>
                 <span>₹{deliveryCharge.toFixed(2)}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: '800', borderTop: '1px solid var(--border-color)', paddingTop: '10px', marginTop: '5px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: '700', borderTop: '1px solid var(--border-color)', paddingTop: '10px', marginTop: '5px' }}>
                 <span>Grand Total:</span>
-                <span className="text-accent">₹{discountedGrandTotal.toFixed(2)}</span>
+                <span>₹{discountedGrandTotal.toFixed(2)}</span>
               </div>
+              {payWithWallet && walletUsed > 0 && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--primary-color)', fontWeight: '600' }}>
+                    <span>Wallet Deduction:</span>
+                    <span>-₹{walletUsed.toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.25rem', fontWeight: '800', borderTop: '1px dashed var(--border-color)', paddingTop: '8px', marginTop: '2px' }}>
+                    <span>Net Payable:</span>
+                    <span className="text-accent">₹{remainingPayable.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {user && (
