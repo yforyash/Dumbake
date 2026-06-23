@@ -5,7 +5,7 @@ import CryptoJS from 'crypto-js';
 import { ShieldAlert, CheckCircle2, Lock, Mail, User } from 'lucide-react';
 import { loginUser, registerUser, forgotPassword, resetPassword, verifyEmail } from '../services/api';
 
-export default function Auth({ onLoginSuccess }) {
+export default function Auth({ onLoginSuccess, cartItems = [] }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [mode, setMode] = useState('login');
@@ -20,6 +20,10 @@ export default function Auth({ onLoginSuccess }) {
   useEffect(() => {
     if (token && email) setMode('reset');
   }, [token, email]);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [mode]);
 
   const hash = p => CryptoJS.SHA256(p).toString(CryptoJS.enc.Hex);
 
@@ -58,6 +62,8 @@ export default function Auth({ onLoginSuccess }) {
                   // Redirect according to role (only admin or user)
                   if (user.role === 'admin') {
                     navigate('/admin-dashboard');
+                  } else if (cartItems.length > 0) {
+                    navigate('/checkout');
                   } else {
                     navigate('/');
                   }

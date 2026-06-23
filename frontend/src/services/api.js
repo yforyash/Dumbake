@@ -250,3 +250,37 @@ export async function fetchBulkEnquiries() {
   if (!res.ok) throw new Error(data.error || 'Fetch bulk enquiries failed');
   return data;
 }
+
+export async function fetchAddresses() {
+  const res = await fetch(`${BASE_URL}/addresses`, {
+    headers: { 'x-user-id': getUserIdHeader() }
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch addresses');
+  return data;
+}
+
+export async function addAddress(addressData) {
+  const res = await fetch(`${BASE_URL}/addresses`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': getUserIdHeader()
+    },
+    body: JSON.stringify(addressData)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to add address');
+  return data;
+}
+
+export async function deleteAddress(id) {
+  const res = await fetch(`${BASE_URL}/addresses/${id}`, {
+    method: 'DELETE',
+    headers: { 'x-user-id': getUserIdHeader() }
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to delete address');
+  return data;
+}
+

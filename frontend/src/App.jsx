@@ -10,14 +10,17 @@ import Checkout from './pages/Checkout';
 import AdminDashboard from './pages/AdminDashboard';
 import OwnerDashboard from './pages/OwnerDashboard';
 import OrderHistory from './pages/OrderHistory';
-import { fetchProfile } from './services/api';
+import { fetchProfile, fetchAddresses, addAddress, deleteAddress } from './services/api';
+import AddressModal from './components/AddressModal';
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [cartItems, setCartItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [addresses, setAddresses] = useState([]);
+  const [activeAddress, setActiveAddress] = useState(null);
+  const [isAddressOpen, setIsAddressOpen] = useState(false);
 
-  // Load user session from local storage on startup
   useEffect(() => {
     const savedUser = localStorage.getItem('dumbake_user');
     if (savedUser) {
@@ -25,21 +28,22 @@ export default function App() {
         const userObj = JSON.parse(savedUser);
         setUser(userObj);
         
-        // Fetch fresh profile to sync wallet balance and details
         fetchProfile()
           .then(profile => {
             setUser(profile);
             localStorage.setItem('dumbake_user', JSON.stringify(profile));
           })
           .catch(err => {
-            console.warn('[Session] Session expired or invalid session header:', err.message);
+            console.warn('[Session] expired:', err.message);
+            setUser(null);
+            localStorage.removeItem('dumbake_user');
+            localStorage.removeItem('dumbake_active_address');
           });
       } catch (e) {
         localStorage.removeItem('dumbake_user');
       }
     }
 
-    // Load saved cart items
     const savedCart = localStorage.getItem('dumbake_cart');
     if (savedCart) {
       try {
@@ -50,7 +54,41 @@ export default function App() {
     }
   }, []);
 
-  // Save cart changes to local storage
+  useEffect(() => {
+    if (user && user.role !== 'anonymous') {
+      fetchAddresses()
+        .then(data => {
+          setAddresses(data);
+          const savedActive = localStorage.getItem('dumbake_active_address');
+          if (savedActive) {
+            try {
+              const parsed = JSON.parse(savedActive);
+              const exists = data.find(a => a.id === parsed.id);
+              if (exists) {
+                setActiveAddress(exists);
+              } else if (data.length > 0) {
+                setActiveAddress(data[0]);
+                localStorage.setItem('dumbake_active_address', JSON.stringify(data[0]));
+              } else {
+                setActiveAddress(null);
+              }
+            } catch (e) {
+              setActiveAddress(data[0] || null);
+            }
+          } else if (data.length > 0) {
+            setActiveAddress(data[0]);
+            localStorage.setItem('dumbake_active_address', JSON.stringify(data[0]));
+          } else {
+            setActiveAddress(null);
+          }
+        })
+        .catch(err => console.error(err));
+    } else {
+      setAddresses([]);
+      setActiveAddress(null);
+    }
+  }, [user]);
+
   const saveCart = (newCart) => {
     setCartItems(newCart);
     localStorage.setItem('dumbake_cart', JSON.stringify(newCart));
@@ -63,7 +101,11 @@ export default function App() {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('dumbake_user');
-    saveCart([]); // clear cart on logout
+    localStorage.removeItem('dumbake_active_address');
+    setAddresses([]);
+    setActiveAddress(null);
+    saveCart([]);
+    window.scrollTo(0, 0);
   };
 
   const handleAddToCart = (item, customizations = {}) => {
@@ -78,7 +120,7 @@ export default function App() {
     } else {
       let finalPrice = parseFloat(item.price);
       if (customizations.weight === '1 Kg') {
-        finalPrice += 400.00; // Add 400 for 1 Kg cakes
+        finalPrice += 400.00;
       }
       saveCart([...cartItems, { ...item, cartKey, customizations, price: finalPrice, quantity: 1 }]);
     }
@@ -104,7 +146,6 @@ export default function App() {
 
   const handleClearCart = () => {
     saveCart([]);
-    // Update user wallet balance in UI since it was deducted in database checkout
     fetchProfile()
       .then(profile => {
         setUser(profile);
@@ -113,20 +154,49 @@ export default function App() {
       .catch(err => console.error('[Balance Sync]', err));
   };
 
+  const handleSelectAddress = (addr) => {
+    setActiveAddress(addr);
+    localStorage.setItem('dumbake_active_address', JSON.stringify(addr));
+  };
+
+  const handleAddAddress = async (addrData) => {
+    const newAddr = await addAddress(addrData);
+    setAddresses(prev => [newAddr, ...prev]);
+    setActiveAddress(newAddr);
+    localStorage.setItem('dumbake_active_address', JSON.stringify(newAddr));
+  };
+
+  const handleDeleteAddress = async (id) => {
+    await deleteAddress(id);
+    setAddresses(prev => {
+      const updated = prev.filter(a => a.id !== id);
+      if (activeAddress && activeAddress.id === id) {
+        const nextActive = updated[0] || null;
+        setActiveAddress(nextActive);
+        if (nextActive) {
+          localStorage.setItem('dumbake_active_address', JSON.stringify(nextActive));
+        } else {
+          localStorage.removeItem('dumbake_active_address');
+        }
+      }
+      return updated;
+    });
+  };
+
   const cartCount = cartItems.reduce((acc, curr) => acc + curr.quantity, 0);
 
   return (
     <Router>
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        {/* Navigation Header */}
         <Header 
           user={user} 
           onLogout={handleLogout} 
           cartCount={cartCount} 
           onCartClick={() => setIsCartOpen(true)} 
+          activeAddress={activeAddress}
+          onAddressClick={() => setIsAddressOpen(true)}
         />
 
-        {/* Main page content area */}
         <main style={{ flex: '1 0 auto' }}>
           <Routes>
             <Route path="/" element={<Home user={user} onAddToCart={handleAddToCart} />} />
@@ -136,9 +206,9 @@ export default function App() {
               element={
                 user ? (
                   user.role === 'admin' ? <Navigate to="/admin-dashboard" /> :
-                  <Navigate to="/" />
+                  (cartItems.length > 0 ? <Navigate to="/checkout" /> : <Navigate to="/" />)
                 ) : (
-                  <Auth onLoginSuccess={handleLoginSuccess} />
+                  <Auth onLoginSuccess={handleLoginSuccess} cartItems={cartItems} />
                 )
               } 
             />
@@ -151,6 +221,8 @@ export default function App() {
                     user={user} 
                     cartItems={cartItems} 
                     onClearCart={handleClearCart} 
+                    activeAddress={activeAddress}
+                    onAddressClick={() => setIsAddressOpen(true)}
                   />
                 ) : (
                   <Navigate to="/login" />
@@ -189,28 +261,35 @@ export default function App() {
               } 
             />
             
-            {/* Catch-all fallback */}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>
 
-        {/* Global Page Footer */}
         <Footer />
 
-        {/* Mobile Bottom Bar navigation */}
         <BottomNav 
           user={user} 
           cartCount={cartCount} 
           onCartClick={() => setIsCartOpen(true)} 
         />
 
-        {/* Side Basket Drawer */}
+        <AddressModal 
+          isOpen={isAddressOpen}
+          onClose={() => setIsAddressOpen(false)}
+          user={user}
+          addresses={addresses}
+          activeAddress={activeAddress}
+          onSelectAddress={handleSelectAddress}
+          onAddAddress={handleAddAddress}
+          onDeleteAddress={handleDeleteAddress}
+        />
+
         <CartModal 
-          isOpen={isCartOpen} 
-          onClose={() => setIsCartOpen(false)} 
-          cartItems={cartItems} 
-          onUpdateQuantity={handleUpdateCartQuantity} 
-          onRemoveItem={handleRemoveFromCart} 
+          isOpen={isCartOpen}
+          onClose={() => setIsCartOpen(false)}
+          cartItems={cartItems}
+          onUpdateQuantity={handleUpdateCartQuantity}
+          onRemoveItem={handleRemoveFromCart}
         />
       </div>
     </Router>

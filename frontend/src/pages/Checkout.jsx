@@ -3,31 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { MapPin, ShieldCheck, CreditCard, DollarSign, Smartphone, Loader, CheckCircle } from 'lucide-react';
 import { postOrder } from '../services/api';
 import confetti from 'canvas-confetti';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 
-export default function Checkout({ user, cartItems, onClearCart }) {
+export default function Checkout({ user, cartItems, onClearCart, activeAddress, onAddressClick }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
-  // Form Fields
   const [deliveryType, setDeliveryType] = useState('Delivery');
   const [customerName, setCustomerName] = useState(user ? user.name : '');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('Card');
+  const [paymentMethod, setPaymentMethod] = useState('COD');
+  const [payWithWallet, setPayWithWallet] = useState(false);
 
-  // Map Picker Coordinate State (default to a Ranchi bakery location)
-  const [coords, setCoords] = useState({ lat: 23.3441, lng: 85.3096 });
-
-  // Masked Payment States
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
   const [upiId, setUpiId] = useState('');
 
-  // Delivery Scheduling
   const getTomorrowString = () => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -42,31 +35,10 @@ export default function Checkout({ user, cartItems, onClearCart }) {
     }
   }, [cartItems, success]);
 
-  // Request and set user live geolocation
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setCoords({ lat: latitude, lng: longitude });
-          setAddress(`Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)} (Your Live Location)`);
-        },
-        (err) => {
-          console.warn('[Geolocation] Permission or locate failed, using default Ranchi coordinate.', err.message);
-          setCoords({ lat: 23.3441, lng: 85.3096 });
-        }
-      );
-    } else {
-      setCoords({ lat: 23.3441, lng: 85.3096 });
-    }
-  }, []);
-
-  // Formats card number: inserts space every 4 digits
   const handleCardNumberChange = (e) => {
-    let value = e.target.value.replace(/\D/g, ''); // digit only
+    let value = e.target.value.replace(/\D/g, '');
     if (value.length > 16) value = value.substring(0, 16);
     
-    // Insert spaces
     const parts = [];
     for (let i = 0; i < value.length; i += 4) {
       parts.push(value.substring(i, i + 4));
@@ -74,7 +46,6 @@ export default function Checkout({ user, cartItems, onClearCart }) {
     setCardNumber(parts.join(' '));
   };
 
-  // Formats card expiry: inserts / after MM
   const handleExpiryChange = (e) => {
     let value = e.target.value.replace(/\D/g, '');
     if (value.length > 4) value = value.substring(0, 4);
@@ -86,7 +57,6 @@ export default function Checkout({ user, cartItems, onClearCart }) {
     }
   };
 
-  // Restricts CVV length to 3 digits
   const handleCvvChange = (e) => {
     const value = e.target.value.replace(/\D/g, '');
     if (value.length <= 3) {
@@ -94,38 +64,18 @@ export default function Checkout({ user, cartItems, onClearCart }) {
     }
   };
 
-  // Handles UPI text formatting (strips spaces, letters/symbols check)
   const handleUpiChange = (e) => {
     const value = e.target.value.trim().toLowerCase();
     setUpiId(value);
   };
 
-  // Map Click Handler component
-  function LocationMarker() {
-    useMapEvents({
-      click(e) {
-        setCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
-        setAddress(`Lat: ${e.latlng.lat.toFixed(4)}, Lng: ${e.latlng.lng.toFixed(4)} (Custom Marker Position)`);
-      },
-    });
-
-    return coords ? <Marker position={[coords.lat, coords.lng]} /> : null;
-  }
-
-  // Dynamic Center Handler component
-  function ChangeMapCenter({ center }) {
-    const map = useMap();
-    useEffect(() => {
-      if (center) {
-        map.setView([center.lat, center.lng], map.getZoom());
-      }
-    }, [center]);
-    return null;
-  }
-
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const deliveryCharge = deliveryType === 'Delivery' ? 40 : 0;
-  const grandTotal = subtotal + deliveryCharge;
+  
+  const discountPercentage = user && user.order_count === 0 ? 10 : (user && user.order_count === 4 ? 30 : 0);
+  const discountAmount = subtotal * (discountPercentage / 100);
+  const discountedGrandTotal = subtotal - discountAmount + deliveryCharge;
+
 
   const handleSubmitOrder = async (e) => {
     e.preventDefault();
@@ -141,12 +91,18 @@ export default function Checkout({ user, cartItems, onClearCart }) {
       return;
     }
 
-    if (deliveryType === 'Delivery' && !address) {
+    if (deliveryType === 'Delivery' && !activeAddress) {
       setError('Please specify a delivery address.');
       return;
     }
 
-    // Payment validation
+    if (paymentMethod === 'Wallet') {
+      if (parseFloat(user.wallet_balance) < discountedGrandTotal) {
+        setError('Insufficient wallet balance for this transaction.');
+        return;
+      }
+    }
+
     if (paymentMethod === 'Card') {
       if (cardNumber.replace(/\s/g, '').length !== 16) {
         setError('Please enter a valid 16-digit card number.');
@@ -170,19 +126,22 @@ export default function Checkout({ user, cartItems, onClearCart }) {
     setLoading(true);
 
     try {
-      const finalAddress = deliveryType === 'Delivery'
-        ? `${address} | Scheduled: ${deliveryDate} (${deliveryTimeSlot})`
+      const finalAddress = deliveryType === 'Delivery' && activeAddress
+        ? `${activeAddress.address_line} | Scheduled: ${deliveryDate} (${deliveryTimeSlot})`
         : `Store Pickup | Scheduled: ${deliveryDate} (${deliveryTimeSlot})`;
 
       const orderPayload = {
-        items: cartItems.map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })),
-        totalPrice: grandTotal,
+        items: cartItems.map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, customizations: i.customizations })),
+        totalPrice: discountedGrandTotal,
         deliveryType,
         address: finalAddress,
         paymentMethod,
         customerName,
-        customerPhone
+        customerPhone,
+        latitude: deliveryType === 'Delivery' && activeAddress ? activeAddress.latitude : null,
+        longitude: deliveryType === 'Delivery' && activeAddress ? activeAddress.longitude : null
       };
+
 
       const orderResult = await postOrder(orderPayload);
       setSuccess(true);
@@ -210,7 +169,7 @@ export default function Checkout({ user, cartItems, onClearCart }) {
           <p style={{ fontSize: '1.1rem', marginBottom: '1.5rem' }}>Your bakes are going into the oven. Track your status on your dashboard.</p>
           
           <div style={{ background: 'var(--secondary-color)', padding: '1rem', borderRadius: '12px', marginBottom: '2rem', fontSize: '0.9rem', color: 'var(--accent-color)', fontWeight: '600' }}>
-            A simulation of ₹{grandTotal.toFixed(2)} payment was processed securely.
+            A simulation of ₹{discountedGrandTotal.toFixed(2)} payment was processed securely.
           </div>
 
           <button onClick={() => navigate('/order-history')} className="btn btn-primary" style={{ width: '100%' }}>
@@ -319,62 +278,158 @@ export default function Checkout({ user, cartItems, onClearCart }) {
               </div>
 
               {deliveryType === 'Delivery' && (
-                <>
-                  <div className="form-group">
-                    <label className="form-label">Street Address</label>
-                    <input 
-                      type="text" 
-                      placeholder="Apartment/Suite, Road, Area name"
-                      value={address} 
-                      onChange={(e) => setAddress(e.target.value)} 
-                      className="form-input" 
-                      required 
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Pin Location on Map (Click Map to Select Address coords)</label>
-                    <div className="map-picker-container">
-                      <MapContainer center={[coords.lat, coords.lng]} zoom={13} style={{ width: '100%', height: '100%' }}>
-                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                        <ChangeMapCenter center={coords} />
-                        <LocationMarker />
-                      </MapContainer>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
+                  <label className="form-label" style={{ margin: 0 }}>Delivery Destination</label>
+                  {activeAddress ? (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '1rem',
+                      borderRadius: '16px',
+                      border: '1.5px solid var(--border-color)',
+                      backgroundColor: 'var(--primary-light)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', overflow: 'hidden' }}>
+                        <div style={{
+                          backgroundColor: 'var(--accent-color)',
+                          color: '#ffffff',
+                          padding: '8px',
+                          borderRadius: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <MapPin size={16} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                          <span style={{ fontWeight: '800', fontSize: '0.9rem', color: 'var(--text-color)', textTransform: 'capitalize' }}>
+                            {activeAddress.label} Address
+                          </span>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            {activeAddress.address_line}
+                          </span>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={onAddressClick}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--accent-color)',
+                          fontWeight: '700',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          backgroundColor: '#ffffff',
+                          border: '1px solid var(--border-color)'
+                        }}
+                      >
+                        Change
+                      </button>
                     </div>
-                  </div>
-                </>
+                  ) : (
+                    <div style={{
+                      padding: '1.5rem',
+                      borderRadius: '16px',
+                      border: '1.5px dashed var(--accent-color)',
+                      backgroundColor: 'var(--primary-light)',
+                      textAlign: 'center'
+                    }}>
+                      <MapPin size={32} style={{ color: 'var(--accent-color)', margin: '0 auto 8px auto' }} />
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-color)', fontWeight: '700', marginBottom: '12px' }}>
+                        No delivery address set.
+                      </p>
+                      <button 
+                        type="button"
+                        onClick={onAddressClick}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: '12px',
+                          border: 'none',
+                          backgroundColor: 'var(--accent-color)',
+                          color: '#ffffff',
+                          fontWeight: '700',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Set Delivery Address
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
-            {/* Payment Integration */}
+             {/* Payment Integration */}
             <div className="card" style={{ padding: '1.5rem' }}>
               <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <ShieldCheck size={20} style={{ color: '#1A8245' }} /> Secure Payment Gateways
               </h3>
               
-              <div className="payment-methods">
-                <div 
-                  onClick={() => setPaymentMethod('Card')} 
-                  className={`payment-method-card ${paymentMethod === 'Card' ? 'selected' : ''}`}
-                >
-                  <CreditCard size={20} style={{ margin: '0 auto 6px auto' }} />
-                  <span>Card</span>
+              {user && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '1rem', background: 'var(--primary-light)', borderRadius: '12px', marginBottom: '1.5rem', border: '1.5px solid var(--border-color)' }}>
+                  <input 
+                    type="checkbox" 
+                    id="pay-with-wallet"
+                    checked={payWithWallet} 
+                    onChange={(e) => {
+                      setPayWithWallet(e.target.checked);
+                      if (e.target.checked) {
+                        setPaymentMethod('Wallet');
+                      } else {
+                        setPaymentMethod('COD');
+                      }
+                    }}
+                    style={{ width: '20px', height: '20px', accentColor: 'var(--accent-color)', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="pay-with-wallet" style={{ fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '2px', width: '100%' }}>
+                    <span style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>Pay using Dumbake Wallet</span>
+                      <span style={{ color: 'var(--accent-color)' }}>Balance: ₹{parseFloat(user.wallet_balance).toFixed(2)}</span>
+                    </span>
+                    {payWithWallet && (
+                      <span style={{ fontSize: '0.8rem', color: '#1A8245', fontWeight: '600', marginTop: '4px' }}>
+                        Deduction: -₹{discountedGrandTotal.toFixed(2)} | Remaining Balance: ₹{(user.wallet_balance - discountedGrandTotal).toFixed(2)}
+                      </span>
+                    )}
+                  </label>
                 </div>
-                <div 
-                  onClick={() => setPaymentMethod('UPI')} 
-                  className={`payment-method-card ${paymentMethod === 'UPI' ? 'selected' : ''}`}
-                >
-                  <Smartphone size={20} style={{ margin: '0 auto 6px auto' }} />
-                  <span>UPI ID</span>
+              )}
+              
+              {!payWithWallet ? (
+                <div className="payment-methods">
+                  <div 
+                    onClick={() => setPaymentMethod('Card')} 
+                    className={`payment-method-card ${paymentMethod === 'Card' ? 'selected' : ''}`}
+                  >
+                    <CreditCard size={20} style={{ margin: '0 auto 6px auto' }} />
+                    <span>Card</span>
+                  </div>
+                  <div 
+                    onClick={() => setPaymentMethod('UPI')} 
+                    className={`payment-method-card ${paymentMethod === 'UPI' ? 'selected' : ''}`}
+                  >
+                    <Smartphone size={20} style={{ margin: '0 auto 6px auto' }} />
+                    <span>UPI ID</span>
+                  </div>
+                  <div 
+                    onClick={() => setPaymentMethod('COD')} 
+                    className={`payment-method-card ${paymentMethod === 'COD' ? 'selected' : ''}`}
+                  >
+                    <DollarSign size={20} style={{ margin: '0 auto 6px auto' }} />
+                    <span>COD</span>
+                  </div>
                 </div>
-                <div 
-                  onClick={() => setPaymentMethod('COD')} 
-                  className={`payment-method-card ${paymentMethod === 'COD' ? 'selected' : ''}`}
-                >
-                  <DollarSign size={20} style={{ margin: '0 auto 6px auto' }} />
-                  <span>COD</span>
+              ) : (
+                <div style={{ padding: '1rem', background: '#E2F6E9', color: '#1A8245', borderRadius: '12px', border: '1.5px solid #1A8245', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700', fontSize: '0.9rem' }}>
+                  <span>✓ Dumbake Wallet payment active. Balance will be deducted automatically.</span>
                 </div>
-              </div>
+              )}
 
               {/* Card Inputs */}
               {paymentMethod === 'Card' && (
@@ -467,13 +522,19 @@ export default function Checkout({ user, cartItems, onClearCart }) {
                 <span>Subtotal:</span>
                 <span>₹{subtotal.toFixed(2)}</span>
               </div>
+              {discountAmount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#1A8245', fontWeight: '600' }}>
+                  <span>{discountPercentage}% {discountPercentage === 10 ? 'First Order Discount' : '5th Order Loyalty Reward'}:</span>
+                  <span>-₹{discountAmount.toFixed(2)}</span>
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
                 <span>Delivery Charge:</span>
                 <span>₹{deliveryCharge.toFixed(2)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: '800', borderTop: '1px solid var(--border-color)', paddingTop: '10px', marginTop: '5px' }}>
                 <span>Grand Total:</span>
-                <span className="text-accent">₹{grandTotal.toFixed(2)}</span>
+                <span className="text-accent">₹{discountedGrandTotal.toFixed(2)}</span>
               </div>
             </div>
 

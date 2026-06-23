@@ -1,24 +1,24 @@
 :root {
-  --bg-color: #FFFDFE;           /* Soft Sweet White with Pink Undertone */
-  --primary-color: #FFAEC9;      /* Cute Bakery Pink */
-  --primary-light: #FFF0F3;      /* Milky Rose Pink */
-  --secondary-color: #FFF5F7;    /* Highlight Pink for sections */
-  --accent-color: #D25C78;       /* Raspberry Jam Pink for actions/headings */
-  --accent-hover: #B6435F;       /* Deep Rose hover */
-  --text-color: #3C2227;         /* Warm Cocoa Brown for text */
-  --text-muted: #8E7075;         /* Muted Cocoa Rose */
+  --bg-color: #FAF6EE;           /* Creamy Warm Vanilla White */
+  --primary-color: #E23D52;      /* Medium Cherry Red */
+  --primary-light: #FBEBEF;      /* Soft Light Cherry Tint */
+  --secondary-color: #F7F1E6;    /* Warm Biscuit Cream for highlight sections */
+  --accent-color: #9A0F29;       /* Premium Dark Cherry Red */
+  --accent-hover: #800A1E;       /* Deep Cherry hover */
+  --text-color: #2F1A1C;         /* Dark Cocoa Cherry Brown */
+  --text-muted: #6E5B5D;         /* Muted Cocoa Rose */
   --white: #ffffff;
   --card-bg: #ffffff;
-  --border-color: #FFE3E8;       /* Soft pink border */
+  --border-color: #EEDAC5;       /* Warm Biscuit Border */
   
-  --shadow: 0 12px 35px rgba(210, 92, 120, 0.08);
-  --shadow-sm: 0 4px 12px rgba(210, 92, 120, 0.04);
-  --shadow-hover: 0 16px 40px rgba(210, 92, 120, 0.18);
+  --shadow: 0 12px 35px rgba(154, 15, 41, 0.08);
+  --shadow-sm: 0 4px 12px rgba(154, 15, 41, 0.04);
+  --shadow-hover: 0 16px 40px rgba(154, 15, 41, 0.18);
   
   --border-radius: 16px;
   --border-radius-lg: 24px;
   --border-radius-sm: 8px;
-  --border-radius-pill: 30px;    /* Cute round pill shapes */
+  --border-radius-pill: 30px;
   
   --font-sans: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-serif: 'Playfair Display', Georgia, serif;
@@ -156,7 +156,7 @@ p {
 .btn-primary:hover {
   background-color: var(--accent-hover);
   transform: translateY(-4px) scale(1.03);
-  box-shadow: 0 10px 25px rgba(210, 92, 120, 0.3);
+  box-shadow: 0 10px 25px rgba(154, 15, 41, 0.25);
 }
 
 .btn-secondary {
@@ -170,7 +170,7 @@ p {
   color: var(--white);
   border-color: var(--primary-color);
   transform: translateY(-4px) scale(1.03);
-  box-shadow: 0 10px 25px rgba(210, 92, 120, 0.15);
+  box-shadow: 0 10px 25px rgba(154, 15, 41, 0.15);
 }
 
 .btn-outline {

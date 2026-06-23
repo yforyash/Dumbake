@@ -1,56 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
 const { query } = require('../config/db');
 const { authenticate } = require('../middlewares/auth');
-
-async function sendVerificationEmail(email, code) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.log(`[Email Simulator] Verification code for ${email} is: ${code}`);
-    return;
-  }
-
-  try {
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
-
-    const mailOptions = {
-      from: `"Dumbake Ranchi" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Dumbake - Verify Your Account',
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #f0f0f0; border-radius: 8px;">
-          <h2 style="color: #2e1503; text-align: center; font-family: Georgia, serif;">Dumbake 🍰</h2>
-          <p>Hi,</p>
-          <p>Thank you for signing up with Dumbake Ranchi! To activate your account, please enter the following 6-digit verification code on the registration page:</p>
-          <div style="font-size: 24px; font-weight: bold; text-align: center; color: #d4b1a5; background-color: #2e1503; padding: 15px; border-radius: 6px; letter-spacing: 5px; margin: 20px 0;">
-            ${code}
-          </div>
-          <p>This code is valid for 1 hour. If you didn't request this code, please ignore this email.</p>
-          <hr style="border: 0; border-top: 1px solid #eee; margin-top: 30px;" />
-          <p style="font-size: 12px; color: #999; text-align: center;">Dumbake Ranchi | Ranchi Store Support: +91 91514 63571</p>
-        </div>
-      `
-    };
-
-    await transporter.sendMail(mailOptions);
-    console.log(`[Email] Verification email sent to ${email}`);
-  } catch (err) {
-    console.error('[Email Error] Failed to send verification email:', err.message);
-  }
-}
+const { sendVerificationEmail, sendNewsletterSubscriptionEmail } = require('../utils/mailer');
 
 // Register user
 router.post('/register', async (req, res) => {
   try {
     const { name, email, passwordHash } = req.body;
     
+    // Determine user role dynamically: if email matches configured ADMIN_EMAIL, give them 'admin' role
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@dumbake.com';
+    const role = (email.toLowerCase() === adminEmail.toLowerCase()) ? 'admin' : 'user';
+
     // Check if user already exists
     const exists = await query('SELECT id, is_verified FROM users WHERE email = $1', [email]);
     if (exists.rows.length > 0) {
@@ -62,10 +25,10 @@ router.post('/register', async (req, res) => {
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const result = await query(
           `UPDATE users 
-           SET name = $1, password_hash = $2, verification_code = $3 
-           WHERE email = $4 
+           SET name = $1, password_hash = $2, verification_code = $3, role = $4 
+           WHERE email = $5 
            RETURNING id, name, email, role, wallet_balance, is_verified`,
-          [name, passwordHash, code, email]
+          [name, passwordHash, code, role, email]
         );
         await sendVerificationEmail(email, code);
         return res.status(201).json({
@@ -78,12 +41,11 @@ router.post('/register', async (req, res) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
     // Default balance is 1000.00 to make simulated demo payments easy!
-    // Every registered user starts as 'user' role
     const result = await query(
       `INSERT INTO users (name, email, password_hash, role, wallet_balance, is_verified, verification_code)
-       VALUES ($1, $2, $3, 'user', 1000.00, FALSE, $4)
+       VALUES ($1, $2, $3, $4, 1000.00, FALSE, $5)
        RETURNING id, name, email, role, wallet_balance, is_verified`,
-      [name, email, passwordHash, code]
+      [name, email, passwordHash, role, code]
     );
 
     // Send verification email (calls real email if env credentials exist, logs to terminal console otherwise)
@@ -124,38 +86,23 @@ router.post('/verify', async (req, res) => {
 
     const result = await query('SELECT id, name, email, role, wallet_balance, verification_code FROM users WHERE email = $1', [email]);
     
-    // If email is not found, and we are in mock fallback mode, dynamically create the user as verified!
     if (result.rows.length === 0) {
-      const dbModule = require('../config/db');
-      if (!dbModule.pool) {
-        // Mock mode: insert the user
-        const insertRes = await query(
-          `INSERT INTO users (name, email, password_hash, role) 
-           VALUES ($1, $2, 'mock_hash', 'user') 
-           RETURNING id, name, email, role, wallet_balance`,
-          [email.split('@')[0], email]
-        );
-        await query('UPDATE users SET is_verified = TRUE WHERE email = $1', [email]);
-        return res.json({
-          message: 'Email verified successfully! (Mock Sandbox Auto-Activation)',
-          user: {
-            ...insertRes.rows[0],
-            is_verified: true
-          }
-        });
-      }
       return res.status(400).json({ error: 'Email address not found' });
     }
 
     const user = result.rows[0];
-    const isBypass = (code === '123456' || !process.env.EMAIL_USER || !process.env.EMAIL_PASS);
-    if (user.verification_code === code || !code || isBypass) { // allow flexible matching in sandbox
+    if (user.verification_code === code) {
       await query('UPDATE users SET is_verified = TRUE WHERE email = $1', [email]);
       
       const userResult = await query('SELECT id, name, email, role, wallet_balance FROM users WHERE email = $1', [email]);
+      const orderCountRes = await query('SELECT COUNT(*)::integer FROM orders WHERE user_id = $1', [userResult.rows[0].id]);
+      const orderCount = parseInt(orderCountRes.rows[0]?.count || 0);
       res.json({
         message: 'Email verified successfully!',
-        user: userResult.rows[0]
+        user: {
+          ...userResult.rows[0],
+          order_count: orderCount
+        }
       });
     } else {
       res.status(400).json({ error: 'Invalid verification code' });
@@ -175,27 +122,7 @@ router.post('/login', async (req, res) => {
       [email]
     );
     
-    const dbModule = require('../config/db');
-    
     if (result.rows.length === 0) {
-      if (!dbModule.pool) {
-        // In serverless mock sandbox fallback, auto-register and verify new users on login to prevent container reset bugs!
-        const insertRes = await query(
-          `INSERT INTO users (name, email, password_hash, role) 
-           VALUES ($1, $2, $3, 'user') 
-           RETURNING id, name, email, role, wallet_balance`,
-          [email.split('@')[0], email, passwordHash]
-        );
-        await query('UPDATE users SET is_verified = TRUE WHERE email = $1', [email]);
-        
-        return res.json({
-          id: insertRes.rows[0].id,
-          name: insertRes.rows[0].name,
-          email: insertRes.rows[0].email,
-          role: insertRes.rows[0].role,
-          wallet_balance: insertRes.rows[0].wallet_balance
-        });
-      }
       return res.status(400).json({ error: 'Invalid email or password' });
     }
 
@@ -215,12 +142,16 @@ router.post('/login', async (req, res) => {
       });
     }
     
+    const orderCountRes = await query('SELECT COUNT(*)::integer FROM orders WHERE user_id = $1', [user.id]);
+    const orderCount = parseInt(orderCountRes.rows[0]?.count || 0);
+
     res.json({
       id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
-      wallet_balance: user.wallet_balance
+      wallet_balance: user.wallet_balance,
+      order_count: orderCount
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -288,11 +219,20 @@ router.post('/reset-password', async (req, res) => {
 });
 
 // Get user profile
-router.get('/profile', authenticate, (req, res) => {
+router.get('/profile', authenticate, async (req, res) => {
   if (req.user.role === 'anonymous') {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  res.json(req.user);
+  try {
+    const orderCountRes = await query('SELECT COUNT(*)::integer FROM orders WHERE user_id = $1', [req.user.id]);
+    const orderCount = parseInt(orderCountRes.rows[0]?.count || 0);
+    res.json({
+      ...req.user,
+      order_count: orderCount
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Newsletter subscription
@@ -308,7 +248,50 @@ router.post('/subscribe', async (req, res) => {
       [email]
     );
 
+    // Send newsletter subscription confirmation email
+    await sendNewsletterSubscriptionEmail(email);
+
     res.status(201).json({ message: 'Subscribed successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Send/Resend OTP (API-based OTP generation)
+router.post('/send-otp', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email address format.' });
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Check if user exists
+    const exists = await query('SELECT id FROM users WHERE email = $1', [email]);
+    
+    if (exists.rows.length > 0) {
+      await query('UPDATE users SET verification_code = $1 WHERE email = $2', [code, email]);
+    } else {
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@dumbake.com';
+      const role = (email.toLowerCase() === adminEmail.toLowerCase()) ? 'admin' : 'user';
+      
+      await query(
+        `INSERT INTO users (name, email, password_hash, role, wallet_balance, is_verified, verification_code)
+         VALUES ($1, $2, 'stub_hash', $3, 1000.00, FALSE, $4)`,
+        [email.split('@')[0], email, role, code]
+      );
+    }
+
+    // Send the verification OTP email
+    await sendVerificationEmail(email, code);
+
+    res.json({ message: 'Verification OTP sent successfully to ' + email });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

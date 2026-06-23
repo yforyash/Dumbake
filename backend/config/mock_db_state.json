@@ -1,0 +1,287 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Ishika (Owner)",
+      "email": "admin@dumbake.com",
+      "password_hash": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
+      "role": "admin",
+      "wallet_balance": 5000,
+      "is_verified": true,
+      "verification_code": null
+    }
+  ],
+  "bakery_items": [
+    {
+      "id": 1,
+      "name": "Dumbake Signature Fudgy Brookies",
+      "description": "A heavenly, soft-baked fusion of a chocolate chip cookie and a rich fudgy brownie. Dumbake's original crowd-pleaser!",
+      "price": 150,
+      "category": "Brookies",
+      "image_url": "/dumbake_brookies.png",
+      "is_eggless": true,
+      "is_bestseller": true,
+      "stock_quantity": 20,
+      "status": "available"
+    },
+    {
+      "id": 2,
+      "name": "Nutella Sea Salt Brookies",
+      "description": "Our signature gooey brookies swirled with pure Nutella and topped with flaky Maldon sea salt.",
+      "price": 180,
+      "category": "Brookies",
+      "image_url": "/dumbake_brookies.png",
+      "is_eggless": true,
+      "is_bestseller": true,
+      "stock_quantity": 15,
+      "status": "available"
+    },
+    {
+      "id": 3,
+      "name": "Lotus Biscoff Brookies",
+      "description": "Gooey cookie-brownie hybrid bar topped generously with smooth Lotus Biscoff cookie spread.",
+      "price": 190,
+      "category": "Brookies",
+      "image_url": "/dumbake_brookies.png",
+      "is_eggless": true,
+      "is_bestseller": false,
+      "stock_quantity": 12,
+      "status": "available"
+    },
+    {
+      "id": 4,
+      "name": "Classic Chocolate Fudge Brownies",
+      "description": "Rich, intense dark chocolate brownies with a perfectly glossy, paper-thin crinkle crust.",
+      "price": 120,
+      "category": "Brownies",
+      "image_url": "/dumbake_brownies.png",
+      "is_eggless": true,
+      "is_bestseller": true,
+      "stock_quantity": 25,
+      "status": "available"
+    },
+    {
+      "id": 5,
+      "name": "Walnut Fudge Brownies",
+      "description": "Ultra-fudgy chocolate brownie loaded with roasted premium walnut pieces.",
+      "price": 140,
+      "category": "Brownies",
+      "image_url": "/dumbake_brownies.png",
+      "is_eggless": true,
+      "is_bestseller": false,
+      "stock_quantity": 15,
+      "status": "available"
+    },
+    {
+      "id": 6,
+      "name": "Overloaded Biscoff Brownies",
+      "description": "Decadent dark chocolate brownie slab filled with melted cookie butter swirls.",
+      "price": 160,
+      "category": "Brownies",
+      "image_url": "/dumbake_brownies.png",
+      "is_eggless": true,
+      "is_bestseller": false,
+      "stock_quantity": 10,
+      "status": "available"
+    },
+    {
+      "id": 7,
+      "name": "Ishika's Handcrafted Mango Cake (Seasonal)",
+      "description": "Light sponge cake layered with fresh local Ranchi mango pulp and dairy-whipped cream.",
+      "price": 850,
+      "category": "Cakes",
+      "image_url": "/dumbake_mango_cake.png",
+      "is_eggless": true,
+      "is_bestseller": true,
+      "stock_quantity": 10,
+      "status": "available"
+    },
+    {
+      "id": 8,
+      "name": "Dumbake Rose Celebration Cake",
+      "description": "Elegant double-layered custom cake decorated with pretty pink rose icing and filled with milk chocolate ganache.",
+      "price": 750,
+      "category": "Cakes",
+      "image_url": "/dumbake_bento_cake.png",
+      "is_eggless": true,
+      "is_bestseller": true,
+      "stock_quantity": 8,
+      "status": "available"
+    },
+    {
+      "id": 9,
+      "name": "Belgian Truffle Dream Cake",
+      "description": "Decadent five-layer chocolate cake layered with smooth dark Belgian chocolate ganache.",
+      "price": 800,
+      "category": "Cakes",
+      "image_url": "/dumbake_mango_cake.png",
+      "is_eggless": true,
+      "is_bestseller": false,
+      "stock_quantity": 5,
+      "status": "available"
+    },
+    {
+      "id": 10,
+      "name": "Minimalist Pastel Bento Cake",
+      "description": "Cute 250g lunchbox cake in pastel pink with personalized text, perfect for mini celebrations.",
+      "price": 350,
+      "category": "Cakes",
+      "image_url": "/dumbake_bento_cake.png",
+      "is_eggless": true,
+      "is_bestseller": false,
+      "stock_quantity": 12,
+      "status": "available"
+    },
+    {
+      "id": 11,
+      "name": "Dumbake Red Velvet Cupcakes",
+      "description": "Vibrant red velvet sponge topped with a rich, velvety vanilla cream cheese frosting swirl.",
+      "price": 90,
+      "category": "Cupcakes",
+      "image_url": "/dumbake_cupcakes.png",
+      "is_eggless": true,
+      "is_bestseller": true,
+      "stock_quantity": 18,
+      "status": "available"
+    },
+    {
+      "id": 12,
+      "name": "Nutella Dream Cupcakes",
+      "description": "Rich chocolate cupcakes filled with liquid Nutella and decorated with chocolate buttercream.",
+      "price": 100,
+      "category": "Cupcakes",
+      "image_url": "/dumbake_cupcakes.png",
+      "is_eggless": true,
+      "is_bestseller": false,
+      "stock_quantity": 15,
+      "status": "available"
+    },
+    {
+      "id": 13,
+      "name": "Lotus Biscoff Cupcakes",
+      "description": "Vanilla cupcake with a biscoff cookie butter core and whipped cookie butter cream.",
+      "price": 110,
+      "category": "Cupcakes",
+      "image_url": "/dumbake_cupcakes.png",
+      "is_eggless": true,
+      "is_bestseller": false,
+      "stock_quantity": 15,
+      "status": "available"
+    },
+    {
+      "id": 14,
+      "name": "Chunky Chocolate Chip Cookie Box",
+      "description": "Box of 4 thick, bakery-style cookies packed with dark chocolate chunks and baked golden.",
+      "price": 300,
+      "category": "Pastries & Cookies",
+      "image_url": "/dumbake_savories.png",
+      "is_eggless": true,
+      "is_bestseller": true,
+      "stock_quantity": 15,
+      "status": "available"
+    },
+    {
+      "id": 15,
+      "name": "Lotus Biscoff Cheesecake Pastry",
+      "description": "Silky smooth baked cheesecake slice topped with Lotus Biscoff cookie spread.",
+      "price": 180,
+      "category": "Pastries & Cookies",
+      "image_url": "/dumbake_savories.png",
+      "is_eggless": true,
+      "is_bestseller": false,
+      "stock_quantity": 12,
+      "status": "available"
+    },
+    {
+      "id": 16,
+      "name": "Nutella Hazelnut Pastry Slice",
+      "description": "Moist chocolate sponge slice layered with premium Nutella hazelnut cream.",
+      "price": 160,
+      "category": "Pastries & Cookies",
+      "image_url": "/dumbake_savories.png",
+      "is_eggless": true,
+      "is_bestseller": false,
+      "stock_quantity": 20,
+      "status": "available"
+    },
+    {
+      "id": 17,
+      "name": "Dumbake Signature Hamper Box",
+      "description": "A gorgeous pink gifting box containing 2 signature brookies, 2 brownies, and 2 cupcakes.",
+      "price": 699,
+      "category": "Gift Boxes",
+      "image_url": "/dumbake_cupcakes.png",
+      "is_eggless": true,
+      "is_bestseller": true,
+      "stock_quantity": 10,
+      "status": "available"
+    },
+    {
+      "id": 18,
+      "name": "Assorted Gourmet Cookie Box",
+      "description": "Elegant white box loaded with choco-chip, double chocolate, and red velvet premium cookies.",
+      "price": 499,
+      "category": "Gift Boxes",
+      "image_url": "/dumbake_brookies.png",
+      "is_eggless": true,
+      "is_bestseller": false,
+      "stock_quantity": 8,
+      "status": "available"
+    }
+  ],
+  "orders": [],
+  "reviews": [
+    {
+      "id": 1,
+      "reviewer_name": "Ananya K.",
+      "rating": 5,
+      "comment": "Dumbake Signature Fudgy Brookies are out of this world! Pure chocolate bliss.",
+      "item_id": 1,
+      "created_at": "2026-06-21T10:00:00Z"
+    },
+    {
+      "id": 2,
+      "reviewer_name": "Rohan M.",
+      "rating": 4,
+      "comment": "Belgian Truffle Dream Cake is decadent, highly recommend it.",
+      "item_id": 9,
+      "created_at": "2026-06-22T11:00:00Z"
+    },
+    {
+      "id": 3,
+      "reviewer_name": "Shreya S.",
+      "rating": 5,
+      "comment": "Nutella Sea Salt Brookies have the perfect balance of sweet and salty.",
+      "item_id": 2,
+      "created_at": "2026-06-22T14:30:00Z"
+    },
+    {
+      "id": 4,
+      "reviewer_name": "Aditya P.",
+      "rating": 3,
+      "comment": "Classic Chocolate Fudge Brownies were a bit too sweet for me, but texture was great.",
+      "item_id": 4,
+      "created_at": "2026-06-23T08:00:00Z"
+    },
+    {
+      "id": 5,
+      "reviewer_name": "Neha R.",
+      "rating": 5,
+      "comment": "Dumbake Signature Fudgy Brookies are the best thing I have ever tasted! Extremely rich and fudgy!",
+      "item_id": 1,
+      "created_at": "2026-06-23T09:15:00Z"
+    },
+    {
+      "id": 6,
+      "reviewer_name": "Riddhi K.",
+      "rating": 5,
+      "comment": "Awesome bakery! Love the ambiance and packaging.",
+      "item_id": null,
+      "created_at": "2026-06-23T09:30:00Z"
+    }
+  ],
+  "resets": [],
+  "subscribers": [],
+  "bulk_enquiries": [],
+  "user_addresses": []
+}

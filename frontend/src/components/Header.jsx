@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingBag, LogIn, LogOut, User, LayoutDashboard, History, Search, Phone } from 'lucide-react';
+import { ShoppingBag, LogIn, LogOut, User, LayoutDashboard, History, Search, Phone, MapPin } from 'lucide-react';
 
-export default function Header({ user, onLogout, cartCount, onCartClick }) {
+export default function Header({ user, onLogout, cartCount, onCartClick, activeAddress, onAddressClick }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,10 +43,40 @@ export default function Header({ user, onLogout, cartCount, onCartClick }) {
         {/* Main top header row */}
         <div className="header-container" style={{ padding: '0.8rem 1.5rem', gap: '20px' }}>
           
-          {/* Logo link */}
-          <Link to="/" className="logo" style={{ color: 'var(--accent-color)', fontSize: '2rem', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 'bold' }}>
-            Dumbake🍰
-          </Link>
+          {/* Logo and Address link */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <Link to="/" className="logo" style={{ color: 'var(--accent-color)', fontSize: '2rem', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 'bold' }}>
+              Dumbake🍰
+            </Link>
+            
+            <div 
+              onClick={onAddressClick}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                padding: '0.4rem 0.8rem',
+                borderRadius: '16px',
+                backgroundColor: 'var(--primary-light)',
+                border: '1.2px solid var(--border-color)',
+                maxWidth: '180px',
+                transition: 'all 0.2s ease',
+                overflow: 'hidden'
+              }}
+              className="location-header-widget"
+            >
+              <MapPin size={15} style={{ color: 'var(--accent-color)', flexShrink: 0 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--accent-color)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
+                  {activeAddress ? activeAddress.label : 'Ranchi'}
+                </span>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                  {activeAddress ? activeAddress.address_line : 'Choose Location'}
+                </span>
+              </div>
+            </div>
+          </div>
 
           {/* Search bar form */}
           <form onSubmit={handleSearchSubmit} style={{ flex: '1', maxWidth: '500px', position: 'relative', display: 'flex', alignItems: 'center' }}>

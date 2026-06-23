@@ -60,13 +60,47 @@ const mockState = {
   ],
   orders: [],
   reviews: [
-    { id: 1, reviewer_name: 'Ananya K.', rating: 5, comment: 'The butter croissant was absolutely flakey and delicious! Feels like Paris.', created_at: new Date() },
-    { id: 2, reviewer_name: 'Rohan M.', rating: 4, comment: 'Truffle cake is decadent, highly recommend it.', created_at: new Date() }
+    { id: 1, reviewer_name: 'Ananya K.', rating: 5, comment: 'Dumbake Signature Fudgy Brookies are out of this world! Pure chocolate bliss.', item_id: 1, created_at: new Date('2026-06-21T10:00:00Z') },
+    { id: 2, reviewer_name: 'Rohan M.', rating: 4, comment: 'Belgian Truffle Dream Cake is decadent, highly recommend it.', item_id: 9, created_at: new Date('2026-06-22T11:00:00Z') },
+    { id: 3, reviewer_name: 'Shreya S.', rating: 5, comment: 'Nutella Sea Salt Brookies have the perfect balance of sweet and salty.', item_id: 2, created_at: new Date('2026-06-22T14:30:00Z') },
+    { id: 4, reviewer_name: 'Aditya P.', rating: 3, comment: 'Classic Chocolate Fudge Brownies were a bit too sweet for me, but texture was great.', item_id: 4, created_at: new Date('2026-06-23T08:00:00Z') },
+    { id: 5, reviewer_name: 'Neha R.', rating: 5, comment: 'Dumbake Signature Fudgy Brookies are the best thing I have ever tasted! Extremely rich and fudgy!', item_id: 1, created_at: new Date('2026-06-23T09:15:00Z') },
+    { id: 6, reviewer_name: 'Riddhi K.', rating: 5, comment: 'Awesome bakery! Love the ambiance and packaging.', item_id: null, created_at: new Date('2026-06-23T09:30:00Z') }
   ],
   resets: [],
   subscribers: [],
-  bulk_enquiries: []
+  bulk_enquiries: [],
+  user_addresses: []
 };
+
+const fs = require('fs');
+const path = require('path');
+const MOCK_STATE_FILE = path.join(__dirname, 'mock_db_state.json');
+
+function saveMockState() {
+  try {
+    fs.writeFileSync(MOCK_STATE_FILE, JSON.stringify(mockState, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[Mock DB] Failed to save mock state:', err.message);
+  }
+}
+
+function loadMockState() {
+  try {
+    if (fs.existsSync(MOCK_STATE_FILE)) {
+      const data = fs.readFileSync(MOCK_STATE_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      Object.assign(mockState, parsed);
+      console.log('[Mock DB] Successfully loaded persisted mock state from disk.');
+    } else {
+      saveMockState();
+    }
+  } catch (err) {
+    console.warn('[Mock DB] Failed to load mock state, using defaults:', err.message);
+  }
+}
+
+loadMockState();
 
 async function query(text, params) {
   if (isMock || !pool) {
@@ -82,15 +116,23 @@ async function query(text, params) {
   }
 }
 
-function runMockQuery(text, params) {
+function runMockQuery(text, params = []) {
   const norm = text.toLowerCase().trim();
   
-  // 1. SELECT * FROM bakery_items
-  if (norm.includes('select * from bakery_items') || norm.includes('select * from items')) {
+  // 1. SELECT ... FROM bakery_items
+  if ((norm.includes('from bakery_items') || norm.includes('from items')) && !norm.includes('delete')) {
     let list = [...mockState.bakery_items];
     if (norm.includes('category =')) {
       const cat = params[0];
       list = list.filter(i => i.category === cat);
+    }
+    if (norm.includes('where id =')) {
+      const id = parseInt(params[0]);
+      list = list.filter(i => i.id === id);
+    }
+    if (norm.includes('where name =')) {
+      const name = params[0];
+      list = list.filter(i => i.name.toLowerCase() === name.toLowerCase());
     }
     return { rows: list };
   }
@@ -112,15 +154,21 @@ function runMockQuery(text, params) {
   if (norm.includes('insert into users')) {
     let name, email, passwordHash, role, code;
     
-    if (norm.includes('verification_code')) {
-      // INSERT INTO users (name, email, password_hash, role, wallet_balance, is_verified, verification_code) VALUES ($1, $2, $3, 'user', 1000.00, FALSE, $4)
-      // params: [name, email, passwordHash, code]
+    if (params && params.length === 5) {
       name = params[0];
       email = params[1];
       passwordHash = params[2];
-      code = params[3];
+      role = params[3];
+      code = params[4];
+    } else if (norm.includes('verification_code')) {
+      // INSERT INTO users (name, email, password_hash, role, wallet_balance, is_verified, verification_code) VALUES ($1, $2, $3, 'user', 1000.00, FALSE, $4)
+      // params: [name, email, passwordHash, code]
+      name = params && params[0] ? params[0] : 'Ishika (Owner)';
+      email = params && params[1] ? params[1] : 'admin@dumbake.com';
+      passwordHash = params && params[2] ? params[2] : '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
+      code = params && params[3] ? params[3] : null;
       role = 'user';
-    } else if (params.length === 3) {
+    } else if (params && params.length === 3) {
       // INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'user')
       // params: [name, email, passwordHash]
       name = params[0];
@@ -128,7 +176,7 @@ function runMockQuery(text, params) {
       passwordHash = params[2];
       role = 'user';
       code = null;
-    } else if (params.length === 2) {
+    } else if (params && params.length === 2) {
       // INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, 'mock_hash', 'user')
       // params: [name, email]
       name = params[0];
@@ -137,10 +185,10 @@ function runMockQuery(text, params) {
       role = 'user';
       code = null;
     } else {
-      name = params[0];
-      email = params[1];
-      passwordHash = params[2];
-      role = params[3] || 'user';
+      name = params && params[0] ? params[0] : 'Ishika (Owner)';
+      email = params && params[1] ? params[1] : 'admin@dumbake.com';
+      passwordHash = params && params[2] ? params[2] : '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
+      role = (params && params[3]) || 'admin';
       code = null;
     }
 
@@ -161,6 +209,7 @@ function runMockQuery(text, params) {
     } else {
       mockState.users.push(newUser);
     }
+    saveMockState();
     const publicUser = {
       id: newUser.id,
       name: newUser.name,
@@ -195,6 +244,9 @@ function runMockQuery(text, params) {
           user.name = params[0];
           user.password_hash = params[1];
           user.verification_code = params[2];
+          if (norm.includes('role =')) {
+            user.role = params[3];
+          }
         } else {
           user.verification_code = params[0];
         }
@@ -206,6 +258,7 @@ function runMockQuery(text, params) {
         user.wallet_balance = parseFloat((user.wallet_balance - parseFloat(params[0])).toFixed(2));
       }
     }
+    saveMockState();
     const publicUser = user ? {
       id: user.id,
       name: user.name,
@@ -217,35 +270,78 @@ function runMockQuery(text, params) {
     return { rows: publicUser ? [publicUser] : [] };
   }
 
+  // 3b. INSERT INTO bakery_items
+  if (norm.includes('insert into bakery_items')) {
+    const [name, description, price, category, image_url, is_eggless, is_bestseller, stock_quantity] = params;
+    const newItem = {
+      id: mockState.bakery_items.length + 1,
+      name,
+      description,
+      price: parseFloat(price),
+      category,
+      image_url,
+      is_eggless: !!is_eggless,
+      is_bestseller: !!is_bestseller,
+      stock_quantity: parseInt(stock_quantity || 10),
+      status: 'available'
+    };
+    mockState.bakery_items.push(newItem);
+    saveMockState();
+    return { rows: [newItem] };
+  }
+
   // 3c. UPDATE bakery_items
   if (norm.includes('update bakery_items')) {
-    const id = params[params.length - 1];
-    const item = mockState.bakery_items.find(i => i.id === parseInt(id));
-    if (item) {
-      const [name, description, price, category, image_url, is_eggless, is_bestseller, stock_quantity, status] = params;
-      if (name !== null && name !== undefined) item.name = name;
-      if (description !== null && description !== undefined) item.description = description;
-      if (price !== null && price !== undefined) item.price = parseFloat(price);
-      if (category !== null && category !== undefined) item.category = category;
-      if (image_url !== null && image_url !== undefined) item.image_url = image_url;
-      if (is_eggless !== null && is_eggless !== undefined) item.is_eggless = is_eggless;
-      if (is_bestseller !== null && is_bestseller !== undefined) item.is_bestseller = is_bestseller;
-      if (stock_quantity !== null && stock_quantity !== undefined) item.stock_quantity = parseInt(stock_quantity);
-      if (status !== null && status !== undefined) item.status = status;
+    if (norm.includes('stock_quantity = stock_quantity -')) {
+      // Stock decrement query: params = [quantity, id]
+      const quantity = parseInt(params[0]);
+      const id = parseInt(params[1]);
+      const item = mockState.bakery_items.find(i => i.id === id);
+      if (item) {
+        item.stock_quantity = Math.max(0, item.stock_quantity - quantity);
+        if (item.stock_quantity === 0) {
+          item.status = 'out_of_stock';
+        }
+        saveMockState();
+      }
+      return { rows: item ? [item] : [] };
+    } else {
+      // Admin update query: params = [name, description, price, category, image_url, is_eggless, is_bestseller, stock_quantity, status, id]
+      const id = parseInt(params[params.length - 1]);
+      const item = mockState.bakery_items.find(i => i.id === id);
+      if (item) {
+        const [name, description, price, category, image_url, is_eggless, is_bestseller, stock_quantity, status] = params;
+        if (name !== null && name !== undefined) item.name = name;
+        if (description !== null && description !== undefined) item.description = description;
+        if (price !== null && price !== undefined) item.price = parseFloat(price);
+        if (category !== null && category !== undefined) item.category = category;
+        if (image_url !== null && image_url !== undefined) item.image_url = image_url;
+        if (is_eggless !== null && is_eggless !== undefined) item.is_eggless = is_eggless;
+        if (is_bestseller !== null && is_bestseller !== undefined) item.is_bestseller = is_bestseller;
+        if (stock_quantity !== null && stock_quantity !== undefined) {
+          item.stock_quantity = parseInt(stock_quantity);
+          if (item.stock_quantity > 0 && item.status === 'out_of_stock') {
+            item.status = 'available';
+          }
+        }
+        if (status !== null && status !== undefined) item.status = status;
+        saveMockState();
+      }
+      return { rows: item ? [item] : [] };
     }
-    return { rows: item ? [item] : [] };
   }
 
   // 3d. DELETE FROM bakery_items
   if (norm.includes('delete from bakery_items')) {
     const id = params[0];
     mockState.bakery_items = mockState.bakery_items.filter(i => i.id !== parseInt(id));
+    saveMockState();
     return { rows: [] };
   }
 
   // 4. INSERT INTO orders
   if (norm.includes('insert into orders')) {
-    const [userId, items, totalPrice, deliveryType, address, paymentMethod, paymentStatus, customerName, customerPhone] = params;
+    const [userId, items, totalPrice, deliveryType, address, paymentMethod, paymentStatus, customerName, customerPhone, latitude, longitude] = params;
     const newOrder = {
       id: mockState.orders.length + 1,
       user_id: userId,
@@ -258,20 +354,38 @@ function runMockQuery(text, params) {
       payment_status: paymentStatus,
       customer_name: customerName,
       customer_phone: customerPhone,
+      latitude: latitude ? parseFloat(latitude) : null,
+      longitude: longitude ? parseFloat(longitude) : null,
       created_at: new Date()
     };
     mockState.orders.push(newOrder);
+    saveMockState();
     return { rows: [newOrder] };
   }
 
   // 5. SELECT * FROM orders
   if (norm.includes('select * from orders')) {
+    if (norm.includes('count(*)')) {
+      let list = [...mockState.orders];
+      if (norm.includes('user_id =')) {
+        const uId = parseInt(params[0]);
+        list = list.filter(o => o.user_id === uId);
+      }
+      return { rows: [{ count: list.length }] };
+    }
     return { rows: [...mockState.orders].reverse() };
   }
 
   // 6. SELECT * FROM reviews
-  if (norm.includes('select * from reviews')) {
-    return { rows: [...mockState.reviews].reverse() };
+  if (norm.includes('select * from reviews') || norm.includes('from reviews')) {
+    const reviewsWithItemName = mockState.reviews.map(r => {
+      const matchedItem = mockState.bakery_items.find(i => i.id === r.item_id);
+      return {
+        ...r,
+        item_name: matchedItem ? matchedItem.name : null
+      };
+    });
+    return { rows: [...reviewsWithItemName].reverse() };
   }
 
   // 6b. SELECT * FROM bulk_enquiries
@@ -281,16 +395,18 @@ function runMockQuery(text, params) {
 
   // 7. INSERT INTO reviews
   if (norm.includes('insert into reviews')) {
-    const [userId, reviewerName, rating, comment] = params;
+    const [userId, reviewerName, rating, comment, itemId] = params;
     const newReview = {
       id: mockState.reviews.length + 1,
       user_id: userId,
       reviewer_name: reviewerName,
       rating,
       comment,
+      item_id: itemId ? parseInt(itemId) : null,
       created_at: new Date()
     };
     mockState.reviews.push(newReview);
+    saveMockState();
     return { rows: [newReview] };
   }
 
@@ -303,6 +419,7 @@ function runMockQuery(text, params) {
       created_at: new Date()
     };
     mockState.subscribers.push(newSub);
+    saveMockState();
     return { rows: [newSub] };
   }
 
@@ -320,7 +437,46 @@ function runMockQuery(text, params) {
       created_at: new Date()
     };
     mockState.bulk_enquiries.push(newEnq);
+    saveMockState();
     return { rows: [newEnq] };
+  }
+
+  // 10. SELECT * FROM user_addresses
+  if (norm.includes('from user_addresses') && !norm.includes('insert') && !norm.includes('update') && !norm.includes('delete')) {
+    const userId = params[0];
+    let list = mockState.user_addresses || [];
+    if (userId) {
+      list = list.filter(a => a.user_id === parseInt(userId));
+    }
+    return { rows: list };
+  }
+
+  // 11. INSERT INTO user_addresses
+  if (norm.includes('insert into user_addresses')) {
+    const [userId, label, addressLine, latitude, longitude] = params;
+    if (!mockState.user_addresses) mockState.user_addresses = [];
+    const newAddr = {
+      id: mockState.user_addresses.length + 1,
+      user_id: parseInt(userId),
+      label,
+      address_line: addressLine,
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
+      created_at: new Date()
+    };
+    mockState.user_addresses.push(newAddr);
+    saveMockState();
+    return { rows: [newAddr] };
+  }
+
+  // 12. DELETE FROM user_addresses
+  if (norm.includes('delete from user_addresses')) {
+    const id = parseInt(params[0]);
+    if (mockState.user_addresses) {
+      mockState.user_addresses = mockState.user_addresses.filter(a => a.id !== id);
+      saveMockState();
+    }
+    return { rows: [] };
   }
 
   // Fallback default response

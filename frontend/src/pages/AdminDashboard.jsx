@@ -7,9 +7,34 @@ import {
 } from '../services/api';
 import { 
   TrendingUp, Users, ShoppingBag, DollarSign, Plus, Trash2, Edit2, 
-  Star, PieChart, Check, X, ShieldAlert 
+  Star, PieChart as PieIcon, Check, X, ShieldAlert 
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+
+const CustomTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div style={{ 
+        background: 'var(--white)', 
+        border: '1.5px solid var(--border-color)', 
+        padding: '10px 14px', 
+        borderRadius: '8px', 
+        boxShadow: 'var(--shadow-sm)',
+        fontSize: '0.85rem',
+        zIndex: 100
+      }}>
+        <p style={{ fontWeight: '700', marginBottom: '6px', color: 'var(--text-color)' }}>{data.fullName || data.name}</p>
+        {payload.map((p, idx) => (
+          <p key={idx} style={{ color: p.color || 'var(--text-color)', margin: '3px 0', fontWeight: '500' }}>
+            {p.name}: {p.name.includes('Revenue') ? `₹${p.value}` : p.value}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function AdminDashboard({ user }) {
   const navigate = useNavigate();
@@ -184,6 +209,61 @@ export default function AdminDashboard({ user }) {
     Revenue: categoryRevenue[cat]
   }));
 
+  // Sales by item (Revenue and Volume)
+  const itemSales = {};
+  orders.filter(o => o.status !== 'Cancelled').forEach(order => {
+    const itemsList = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+    itemsList.forEach(item => {
+      if (!itemSales[item.name]) {
+        itemSales[item.name] = { revenue: 0, quantity: 0 };
+      }
+      itemSales[item.name].revenue += parseFloat(item.price) * item.quantity;
+      itemSales[item.name].quantity += item.quantity;
+    });
+  });
+
+  const itemSalesData = Object.keys(itemSales).map(name => ({
+    name: name.split(' ').slice(0, 3).join(' '),
+    fullName: name,
+    Revenue: parseFloat(itemSales[name].revenue.toFixed(2)),
+    Quantity: itemSales[name].quantity
+  }));
+
+  // Average rating per item
+  const itemRatings = {};
+  reviews.forEach(r => {
+    if (r.item_name) {
+      if (!itemRatings[r.item_name]) {
+        itemRatings[r.item_name] = { totalRating: 0, count: 0 };
+      }
+      itemRatings[r.item_name].totalRating += r.rating;
+      itemRatings[r.item_name].count += 1;
+    }
+  });
+
+  const itemRatingsData = Object.keys(itemRatings).map(name => ({
+    name: name.split(' ').slice(0, 3).join(' '),
+    fullName: name,
+    AverageRating: parseFloat((itemRatings[name].totalRating / itemRatings[name].count).toFixed(2)),
+    Count: itemRatings[name].count
+  }));
+
+  // Rating distribution counts (5★ down to 1★)
+  const starCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+  reviews.forEach(r => {
+    if (starCounts[r.rating] !== undefined) {
+      starCounts[r.rating] += 1;
+    }
+  });
+
+  const ratingDistributionData = Object.keys(starCounts).map(star => ({
+    name: `${star} Star${star > 1 ? 's' : ''}`,
+    value: starCounts[star],
+    rating: parseInt(star)
+  })).reverse();
+
+  const RATING_COLORS = ['#FA5252', '#FF8787', '#FFA94D', '#82ca9d', '#FFB800']; // 1 to 5 stars
+
   if (!user || user.role !== 'admin') {
     return null;
   }
@@ -290,28 +370,28 @@ export default function AdminDashboard({ user }) {
                     <p style={{ fontSize: '0.85rem' }}>Menu Items Cataloged</p>
                     <div className="metric-value">{items.length}</div>
                   </div>
-                  <PieChart size={32} style={{ color: 'var(--accent-color)' }} />
+                  <PieIcon size={32} style={{ color: 'var(--accent-color)' }} />
                 </div>
               </div>
 
-              {/* Chart & AI Bestsellers */}
+              {/* Row 1: Category Sales & AI predictions */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }} className="grid-2">
-                {/* Recharts revenue graph */}
+                {/* Recharts category revenue graph */}
                 <div className="card" style={{ padding: '1.5rem' }}>
                   <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', fontFamily: 'var(--font-serif)' }}>Category Sales Dynamics</h3>
-                  <div style={{ width: '100%', height: '240px' }}>
+                  <div style={{ width: '100%', height: '260px' }}>
                     {chartData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData}>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
                           <XAxis dataKey="name" stroke="var(--text-muted)" />
                           <YAxis stroke="var(--text-muted)" />
-                          <Tooltip cursor={{ fill: 'rgba(255, 183, 197, 0.1)' }} />
-                          <Bar dataKey="Revenue" fill="var(--accent-color)" radius={[8, 8, 0, 0]} />
+                          <Tooltip cursor={{ fill: 'rgba(255, 183, 197, 0.1)' }} content={<CustomTooltip />} />
+                          <Bar dataKey="Revenue" fill="var(--accent-color)" radius={[8, 8, 0, 0]} name="Category Revenue" />
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
-                      <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No sales records available yet.</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>No sales records available yet.</div>
                     )}
                   </div>
                 </div>
@@ -319,10 +399,10 @@ export default function AdminDashboard({ user }) {
                 {/* AI Predictive Bestsellers */}
                 <div className="card" style={{ padding: '1.5rem' }}>
                   <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem', fontFamily: 'var(--font-serif)' }}>AI Bestseller Volume Predictions</h3>
-                  <p style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>Moving averages computed on order logs over the last 30 days:</p>
+                  <p style={{ fontSize: '0.8rem', marginBottom: '1.25rem' }}>Moving averages computed on order logs over the last 30 days:</p>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {bestsellers.map((item, index) => (
+                    {bestsellers.length > 0 ? bestsellers.map((item, index) => (
                       <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--secondary-color)', borderRadius: '8px' }}>
                         <div>
                           <span style={{ fontWeight: '700', marginRight: '8px' }}>#{index + 1}</span>
@@ -332,7 +412,99 @@ export default function AdminDashboard({ user }) {
                           {item.sales_volume} sold
                         </span>
                       </div>
-                    ))}
+                    )) : (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No bestseller predictions computed yet.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 2: Product Sales Performance (Wide Full Width) */}
+              <div className="card" style={{ padding: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', fontFamily: 'var(--font-serif)' }}>Sales Performance per Menu Item</h3>
+                <div style={{ width: '100%', height: '320px' }}>
+                  {itemSalesData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={itemSalesData} margin={{ bottom: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                        <XAxis dataKey="name" stroke="var(--text-muted)" angle={-15} textAnchor="end" style={{ fontSize: '0.8rem' }} />
+                        <YAxis yAxisId="left" orientation="left" stroke="var(--accent-color)" label={{ value: 'Revenue (₹)', angle: -90, position: 'insideLeft', offset: 0, style: { fill: 'var(--accent-color)' } }} />
+                        <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" label={{ value: 'Units Sold', angle: 90, position: 'insideRight', offset: 0, style: { fill: '#82ca9d' } }} />
+                        <Tooltip cursor={{ fill: 'rgba(255, 183, 197, 0.1)' }} content={<CustomTooltip />} />
+                        <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                        <Bar yAxisId="left" dataKey="Revenue" fill="var(--accent-color)" radius={[4, 4, 0, 0]} name="Revenue (₹)" />
+                        <Bar yAxisId="right" dataKey="Quantity" fill="#82ca9d" radius={[4, 4, 0, 0]} name="Units Sold" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>No product sales records available yet.</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 3: Product Feedback Ratings & Review Distribution */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }} className="grid-2">
+                {/* Average Ratings per Menu Item */}
+                <div className="card" style={{ padding: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', fontFamily: 'var(--font-serif)' }}>Average Ratings per Menu Item</h3>
+                  <div style={{ width: '100%', height: '280px' }}>
+                    {itemRatingsData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={itemRatingsData} margin={{ bottom: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                          <XAxis dataKey="name" stroke="var(--text-muted)" angle={-15} textAnchor="end" style={{ fontSize: '0.8rem' }} />
+                          <YAxis stroke="var(--text-muted)" domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} label={{ value: 'Stars', angle: -90, position: 'insideLeft' }} />
+                          <Tooltip cursor={{ fill: 'rgba(255, 183, 197, 0.05)' }} content={<CustomTooltip />} />
+                          <Bar dataKey="AverageRating" fill="#FFB800" radius={[4, 4, 0, 0]} name="Avg Rating" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>No item-specific reviews posted yet.</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Overall Rating Distribution */}
+                <div className="card" style={{ padding: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', fontFamily: 'var(--font-serif)' }}>Customer Review Rating Distribution</h3>
+                  <div style={{ width: '100%', height: '280px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                    {reviews.length > 0 ? (
+                      <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        <div style={{ width: '60%', height: '100%' }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={ratingDistributionData}
+                                cx="50%"
+                                cy="47%"
+                                innerRadius={60}
+                                outerRadius={85}
+                                paddingAngle={4}
+                                dataKey="value"
+                                nameKey="name"
+                              >
+                                {ratingDistributionData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={RATING_COLORS[entry.rating - 1]} />
+                                ))}
+                              </Pie>
+                              <Tooltip formatter={(value, name) => [`${value} review(s)`, name]} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        {/* Custom Legend */}
+                        <div style={{ width: '40%', paddingLeft: '10px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
+                          {ratingDistributionData.map((entry, index) => (
+                            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: RATING_COLORS[entry.rating - 1] }} />
+                              <span style={{ fontWeight: '600' }}>{entry.name}:</span>
+                              <span>{entry.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ color: 'var(--text-muted)' }}>No reviews posted yet.</div>
+                    )}
                   </div>
                 </div>
               </div>

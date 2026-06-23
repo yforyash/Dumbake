@@ -34,8 +34,8 @@ export default function CartModal({ isOpen, onClose, cartItems, onUpdateQuantity
               <p style={{ fontSize: '0.9rem' }}>Add some fresh bakes from our home menu!</p>
             </div>
           ) : (
-            cartItems.map((item) => (
-              <div key={item.cartKey} className="cart-item">
+            cartItems.map((item, idx) => (
+              <div key={item.cartKey || `${item.id}-${idx}`} className="cart-item">
                 <img src={item.image_url} alt={item.name} className="cart-item-img" />
                 <div className="cart-item-details">
                   <h4 className="cart-item-title">{item.name}</h4>

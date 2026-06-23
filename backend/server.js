@@ -1,7 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const swaggerUi = require('swagger-ui-express');
-const swaggerJsdoc = require('swagger-jsdoc');
 const { query } = require('./config/db');
 const { seedBakeryItems } = require('./config/seed');
 require('dotenv').config();
@@ -48,6 +46,14 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Dynamic schema migration: add columns if table already existed without them
+    try {
+      await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE`);
+      await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code VARCHAR(10)`);
+    } catch (e) {
+      console.warn('[DB Init] ALTER TABLE users column checks bypassed (mock mode or other database):', e.message);
+    }
 
     // 2. Password Resets Table
     await query(`
@@ -103,9 +109,16 @@ async function initDatabase() {
         reviewer_name VARCHAR(100) NOT NULL,
         rating INTEGER CHECK (rating >= 1 AND rating <= 5),
         comment TEXT,
+        item_id INTEGER REFERENCES bakery_items(id) ON DELETE SET NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    try {
+      await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS item_id INTEGER REFERENCES bakery_items(id) ON DELETE SET NULL;`);
+    } catch (e) {
+      console.log('[DB Init] reviews column item_id alteration status:', e.message);
+    }
 
     // 6. Subscribers Table
     await query(`
@@ -130,13 +143,27 @@ async function initDatabase() {
       );
     `);
 
-    // Seed bakery items
+    await query(`
+      CREATE TABLE IF NOT EXISTS user_addresses (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        label VARCHAR(50) NOT NULL,
+        address_line VARCHAR(255) NOT NULL,
+        latitude NUMERIC(10, 6),
+        longitude NUMERIC(10, 6),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    try {
+      await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS latitude NUMERIC(10, 6);`);
+      await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS longitude NUMERIC(10, 6);`);
+    } catch (e) {
+      console.log('Orders table check status:', e.message);
+    }
+
     await seedBakeryItems();
 
-    // Clean up previous user accounts except the single admin owner
-    await query(`DELETE FROM users WHERE email <> 'admin@dumbake.com'`);
-
-    // Seed single owner admin account
     await query(`
       INSERT INTO users (name, email, password_hash, role, wallet_balance, is_verified)
       VALUES 
@@ -154,131 +181,15 @@ async function initDatabase() {
   }
 }
 
-// Routes registration
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/items', require('./routes/items'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/ai', require('./routes/ai'));
+app.use('/api/addresses', require('./routes/addresses'));
 
-// Swagger Configuration
-const swaggerOptions = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'Dumbake Bakery API Documentation',
-      version: '1.0.0',
-      description: 'Interactive API sandbox for Dumbake premium bakery orders, items catalog, reviews, and AI recommendation features.'
-    },
-    servers: [
-      {
-        url: `http://localhost:${PORT}`
-      }
-    ]
-  },
-  apis: []
-};
 
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-swaggerSpec.paths = {
-  '/api/auth/register': {
-    'post': {
-      'summary': 'Register a new user account',
-      'requestBody': {
-        'required': true,
-        'content': {
-          'application/json': {
-            'schema': {
-              'type': 'object',
-              'properties': {
-                'name': { 'type': 'string' },
-                'email': { 'type': 'string' },
-                'passwordHash': { 'type': 'string' },
-                'role': { 'type': 'string', 'enum': ['user', 'bakery_owner', 'admin'] }
-              }
-            }
-          }
-        }
-      },
-      'responses': {
-        '201': { 'description': 'Created user object' }
-      }
-    }
-  },
-  '/api/auth/login': {
-    'post': {
-      'summary': 'Authenticate user credentials',
-      'requestBody': {
-        'required': true,
-        'content': {
-          'application/json': {
-            'schema': {
-              'type': 'object',
-              'properties': {
-                'email': { 'type': 'string' },
-                'passwordHash': { 'type': 'string' }
-              }
-            }
-          }
-        }
-      },
-      'responses': {
-        '200': { 'description': 'Success user session object' }
-      }
-    }
-  },
-  '/api/items': {
-    'get': {
-      'summary': 'Retrieve filtered bakery catalog items',
-      'parameters': [
-        { 'name': 'category', 'in': 'query', 'schema': { 'type': 'string' } },
-        { 'name': 'search', 'in': 'query', 'schema': { 'type': 'string' } },
-        { 'name': 'eggless', 'in': 'query', 'schema': { 'type': 'string', 'enum': ['true', 'false'] } }
-      ],
-      'responses': {
-        '200': { 'description': 'List of bakery items' }
-      }
-    }
-  },
-  '/api/orders': {
-    'post': {
-      'summary': 'Submit a checkout order request',
-      'requestBody': {
-        'required': true,
-        'content': {
-          'application/json': {
-            'schema': {
-              'type': 'object',
-              'properties': {
-                'items': { 'type': 'array', 'items': { 'type': 'object' } },
-                'totalPrice': { 'type': 'number' },
-                'deliveryType': { 'type': 'string' },
-                'address': { 'type': 'string' },
-                'paymentMethod': { 'type': 'string' },
-                'customerName': { 'type': 'string' },
-                'customerPhone': { 'type': 'string' }
-              }
-            }
-          }
-        }
-      },
-      'responses': {
-        '201': { 'description': 'Created order log' }
-      }
-    }
-  },
-  '/api/ai/recommendations': {
-    'get': {
-      'summary': 'Fetch personalized recommendations powered by Gemini AI API',
-      'responses': {
-        '200': { 'description': 'List of recommended items' }
-      }
-    }
-  }
-};
-
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

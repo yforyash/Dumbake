@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Sparkles, Leaf, Plus, Star, MessageSquarePlus, RefreshCw, Send, Check } from 'lucide-react';
 import { fetchItems, fetchAIRecommendations, postReview, fetchReviews, submitBulkEnquiry } from '../services/api';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 
 export default function Home({ user, onAddToCart }) {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [aiRecs, setAiRecs] = useState([]);
@@ -17,9 +18,19 @@ export default function Home({ user, onAddToCart }) {
   const [category, setCategory] = useState('');
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [eggless, setEggless] = useState(false);
-  const [bestsellersTab, setBestsellersTab] = useState('bestsellers'); // 'bestsellers' vs 'new'
+  const [bestsellersTab, setBestsellersTab] = useState('bestsellers');
+  const [testimonialIndex, setTestimonialIndex] = useState(0);
 
-  // Review states
+  const handleNextTestimonial = () => {
+    if (reviews.length === 0) return;
+    setTestimonialIndex(prev => (prev + 1) % reviews.length);
+  };
+
+  const handlePrevTestimonial = () => {
+    if (reviews.length === 0) return;
+    setTestimonialIndex(prev => (prev - 1 + reviews.length) % reviews.length);
+  };
+
   const [reviewError, setReviewError] = useState('');
   const [reviewSuccess, setReviewSuccess] = useState('');
 
@@ -137,7 +148,7 @@ export default function Home({ user, onAddToCart }) {
                 document.getElementById('menu-catalog')?.scrollIntoView({ behavior: 'smooth' });
               }} 
               className="btn btn-primary" 
-              style={{ background: 'var(--primary-color)', color: 'var(--text-color)', border: 'none', padding: '0.6rem 1.5rem', fontSize: '0.85rem' }}
+              style={{ background: 'var(--primary-color)', color: '#ffffff', border: 'none', padding: '0.6rem 1.5rem', fontSize: '0.85rem' }}
             >
               Explore Now
             </button>
@@ -157,7 +168,7 @@ export default function Home({ user, onAddToCart }) {
                 document.getElementById('menu-catalog')?.scrollIntoView({ behavior: 'smooth' });
               }} 
               className="btn btn-primary" 
-              style={{ background: 'var(--primary-color)', color: 'var(--text-color)', border: 'none', padding: '0.6rem 1.5rem', fontSize: '0.85rem' }}
+              style={{ background: 'var(--primary-color)', color: '#ffffff', border: 'none', padding: '0.6rem 1.5rem', fontSize: '0.85rem' }}
             >
               Order Now
             </button>
@@ -183,6 +194,74 @@ export default function Home({ user, onAddToCart }) {
             <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-color)', lineHeight: '1.3' }}>{feat.label}</span>
           </div>
         ))}
+      </section>
+
+      {/* 2.5 Promo / Loyalty Status Banner */}
+      <section style={{ margin: '2rem 0' }}>
+        {!user ? (
+          <div style={{ 
+            background: 'linear-gradient(135deg, #3C2227 0%, #5C3D42 100%)', 
+            color: '#ffffff', 
+            padding: '1.5rem 2rem', 
+            borderRadius: 'var(--border-radius-lg)', 
+            boxShadow: 'var(--shadow-md)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '15px'
+          }}>
+            <div>
+              <h4 style={{ color: '#ffffff', fontSize: '1.3rem', fontWeight: '800', marginBottom: '0.25rem' }}>
+                🎉 New to Dumbake Ranchi?
+              </h4>
+              <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.9rem', margin: 0 }}>
+                Create an account today to get flat <strong>10% off</strong> on your very first order!
+              </p>
+            </div>
+            <button 
+              onClick={() => navigate('/login')} 
+              className="btn btn-primary" 
+              style={{ background: 'var(--primary-color)', color: '#ffffff', border: 'none', padding: '0.75rem 1.5rem', fontWeight: '700' }}
+            >
+              Sign Up Now
+            </button>
+          </div>
+        ) : (
+          <div style={{ 
+            background: 'var(--primary-light)', 
+            border: '1.5px solid var(--border-color)',
+            padding: '1.25rem 1.75rem', 
+            borderRadius: 'var(--border-radius-lg)', 
+            display: 'flex',
+            alignItems: 'center',
+            gap: '15px'
+          }}>
+            <div style={{ fontSize: '2rem' }}>🍰</div>
+            <div>
+              <h4 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '0.25rem', color: 'var(--accent-color)' }}>
+                Dumbake Loyalty Program
+              </h4>
+              {user.order_count === 0 ? (
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-color)', margin: 0 }}>
+                  Welcome, <strong>{user.name}</strong>! Your <strong>10% First Order discount</strong> is active and will be auto-applied at checkout.
+                </p>
+              ) : user.order_count === 4 ? (
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-color)', margin: 0 }}>
+                  Congratulations, <strong>{user.name}</strong>! You've placed 4 orders. Your <strong>30% 5th Order Loyalty discount</strong> is active and will be auto-applied on this checkout!
+                </p>
+              ) : user.order_count < 4 ? (
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-color)', margin: 0 }}>
+                  You have placed <strong>{user.order_count}</strong> order{user.order_count > 1 ? 's' : ''}. Place <strong>{4 - user.order_count}</strong> more order{4 - user.order_count > 1 ? 's' : ''} to unlock a flat <strong>30% loyalty discount</strong> on your 5th order!
+                </p>
+              ) : (
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-color)', margin: 0 }}>
+                  Thank you for being a loyal customer, <strong>{user.name}</strong>! Keep enjoying Ranchi's premium handcrafted bakes.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* 3. Bestsellers slider grid (Screenshot 2 alignment) */}
@@ -259,7 +338,7 @@ export default function Home({ user, onAddToCart }) {
         <section className="ai-carousel-container" style={{ marginBottom: '4rem' }}>
           <h3 style={{ fontSize: '1.6rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Sparkles size={22} style={{ color: 'var(--accent-color)' }} />
-            Chef's Recommended Treats
+            {user ? `Personalized Recommendations for ${user.name.split(' ')[0]}` : "Chef's Recommended Treats"}
           </h3>
           <div className="grid grid-3">
             {aiRecs.slice(0, 3).map(item => (
@@ -277,7 +356,7 @@ export default function Home({ user, onAddToCart }) {
                   {/* Heuristic reason */}
                   <div className="ai-reason-bubble">
                     <Sparkles size={14} style={{ flexShrink: 0, marginTop: '2px', color: 'var(--accent-color)' }} />
-                    <span>{item.ai_reason}</span>
+                    <span>{user ? item.ai_reason : "A signature premium bake crafted with French techniques."}</span>
                   </div>
 
                   <button 
@@ -364,9 +443,73 @@ export default function Home({ user, onAddToCart }) {
         <p style={{ color: '#ffffff', fontSize: '1.1rem', maxWidth: '600px', marginBottom: '1.5rem' }}>
           Planning for gifting or an office party in Ranchi? Fill out our form to get started
         </p>
-        <button onClick={() => setIsBulkModalOpen(true)} className="btn btn-primary" style={{ padding: '0.8rem 2.5rem', background: 'var(--primary-color)', color: 'var(--text-color)', border: 'none' }}>
+        <button onClick={() => setIsBulkModalOpen(true)} className="btn btn-primary" style={{ padding: '0.8rem 2.5rem', background: 'var(--primary-color)', color: '#ffffff', border: 'none' }}>
           Submit The Form
         </button>
+      </section>
+
+      {/* Live Oven Video loop */}
+      <section style={{ margin: '4rem 0' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gap: '30px',
+          alignItems: 'center',
+          backgroundColor: 'var(--secondary-color)',
+          borderRadius: 'var(--border-radius-lg)',
+          border: '1.5px solid var(--border-color)',
+          padding: '2.5rem',
+          boxShadow: 'var(--shadow-sm)'
+        }} className="grid-2">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--primary-color)', letterSpacing: '1px', textTransform: 'uppercase' }}>
+              ✨ Ranchi's Finest Craft
+            </span>
+            <h3 style={{ fontSize: '2.2rem', fontFamily: 'var(--font-serif)', color: 'var(--accent-color)', margin: 0, lineHeight: '1.2' }}>
+              Handcrafted with Love & Pure Ingredients
+            </h3>
+            <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', margin: 0 }}>
+              Every slice of cake, gooey brookie, and flaky pastry is baked in small batches in our Ranchi store. We use classic techniques and premium ingredients to guarantee fresh, delicious flavors in every bite.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <a 
+                href="#menu-catalog" 
+                className="btn btn-primary"
+                style={{ color: '#ffffff' }}
+              >
+                Order Fresh Bakes
+              </a>
+              <button 
+                onClick={() => setIsBulkModalOpen(true)}
+                className="btn btn-secondary"
+              >
+                Get Custom Quote
+              </button>
+            </div>
+          </div>
+          <div style={{
+            height: '280px',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            border: '2px solid var(--white)',
+            boxShadow: 'var(--shadow)',
+            position: 'relative'
+          }}>
+            <video 
+              autoPlay 
+              loop 
+              muted 
+              playsInline 
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover'
+              }}
+            >
+              <source src="https://assets.mixkit.co/videos/preview/mixkit-decorating-a-chocolate-cake-with-frosting-42171-large.mp4" type="video/mp4" />
+            </video>
+          </div>
+        </div>
       </section>
 
       {/* 7. Catalog list */}
@@ -555,23 +698,117 @@ export default function Home({ user, onAddToCart }) {
       <section style={{ margin: '5rem 0', display: 'grid', gridTemplateColumns: '1fr', gap: '30px' }} className="grid-2">
         <div>
           <h3 style={{ fontSize: '1.8rem', fontWeight: '800', marginBottom: '1.5rem' }}>Ranchi Flavour Logs</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {reviews.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)' }}>No logs posted yet. Be the first to review!</p>
-            ) : (
-              reviews.slice(0, 3).map(rev => (
-                <div key={rev.id} className="review-card">
-                  <div className="stars">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={14} fill={i < rev.rating ? '#FFB800' : 'none'} stroke={i < rev.rating ? '#FFB800' : '#DDD'} />
-                    ))}
-                  </div>
-                  <h5 style={{ fontWeight: '800', color: 'var(--accent-color)', marginBottom: '4px' }}>{rev.reviewer_name}</h5>
-                  <p style={{ fontSize: '0.9rem' }}>"{rev.comment}"</p>
+          {reviews.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)' }}>No logs posted yet. Be the first to review!</p>
+          ) : (
+            <div style={{
+              backgroundColor: 'var(--white)',
+              padding: '2rem',
+              borderRadius: '20px',
+              border: '1.5px solid var(--border-color)',
+              boxShadow: 'var(--shadow-sm)',
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              minHeight: '220px'
+            }}>
+              <div>
+                <div style={{ fontSize: '3.5rem', fontFamily: 'Georgia, serif', color: 'var(--primary-color)', opacity: 0.2, lineHeight: '0.1', marginBottom: '1rem', height: '24px' }}>
+                  “
                 </div>
-              ))
-            )}
-          </div>
+                <p style={{ fontSize: '1.05rem', fontStyle: 'italic', color: 'var(--text-color)', marginBottom: '1rem', lineHeight: '1.5' }}>
+                  {reviews[testimonialIndex]?.comment}
+                </p>
+                <div className="stars" style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={15} fill={i < reviews[testimonialIndex]?.rating ? '#FFB800' : 'none'} stroke={i < reviews[testimonialIndex]?.rating ? '#FFB800' : '#DDD'} />
+                  ))}
+                </div>
+                {reviews[testimonialIndex]?.item_name && (
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: '700',
+                    color: 'var(--accent-color)',
+                    backgroundColor: 'var(--primary-light)',
+                    padding: '4px 10px',
+                    borderRadius: '20px',
+                    display: 'inline-block',
+                    marginBottom: '1rem'
+                  }}>
+                    Reviewed: {reviews[testimonialIndex]?.item_name}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '12px', marginTop: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--primary-light)',
+                    color: 'var(--accent-color)',
+                    fontWeight: '800',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.9rem'
+                  }}>
+                    {(reviews[testimonialIndex]?.reviewer_name || 'U').charAt(0).toUpperCase()}
+                  </div>
+                  <h5 style={{ fontWeight: '800', color: 'var(--text-color)', fontSize: '0.95rem', margin: 0 }}>
+                    {reviews[testimonialIndex]?.reviewer_name}
+                  </h5>
+                </div>
+                {reviews.length > 1 && (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button 
+                      type="button"
+                      onClick={handlePrevTestimonial}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: '1px solid var(--border-color)',
+                        backgroundColor: '#ffffff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--accent-color)',
+                        fontWeight: 'bold',
+                        transition: 'all 0.2s'
+                      }}
+                      className="testimonial-nav-btn"
+                    >
+                      ‹
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={handleNextTestimonial}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: '1px solid var(--border-color)',
+                        backgroundColor: '#ffffff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--accent-color)',
+                        fontWeight: 'bold',
+                        transition: 'all 0.2s'
+                      }}
+                      className="testimonial-nav-btn"
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Post Review card */}
@@ -585,7 +822,7 @@ export default function Home({ user, onAddToCart }) {
           {reviewSuccess && <div className="badge-eggless" style={{ padding: '8px', fontSize: '0.85rem', marginBottom: '1rem', borderRadius: '4px' }}>{reviewSuccess}</div>}
 
           <Formik
-            initialValues={{ reviewerName: user ? user.name : '', rating: 5, comment: '' }}
+            initialValues={{ reviewerName: user ? user.name : '', rating: 5, comment: '', itemId: '' }}
             validationSchema={reviewValidationSchema}
             onSubmit={async (values, { setSubmitting, resetForm }) => {
               setReviewError('');
@@ -594,7 +831,8 @@ export default function Home({ user, onAddToCart }) {
                 const reviewPayload = {
                   reviewerName: values.reviewerName || user.name,
                   rating: parseInt(values.rating),
-                  comment: values.comment
+                  comment: values.comment,
+                  itemId: values.itemId ? parseInt(values.itemId) : null
                 };
                 await postReview(reviewPayload);
                 setReviewSuccess('Review logged successfully!');
@@ -626,6 +864,16 @@ export default function Home({ user, onAddToCart }) {
                     <option value={3}>⭐⭐⭐ (3/5)</option>
                     <option value={2}>⭐⭐ (2/5)</option>
                     <option value={1}>⭐ (1/5)</option>
+                  </Field>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Item to Review (Optional)</label>
+                  <Field as="select" name="itemId" className="form-input">
+                    <option value="">-- General Bakery Review --</option>
+                    {items.map(item => (
+                      <option key={item.id} value={item.id}>{item.name}</option>
+                    ))}
                   </Field>
                 </div>
 

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/db');
 const { authenticate, requireRole } = require('../middlewares/auth');
+const { sendBulkEnquiryEmail } = require('../utils/mailer');
 
 // Create order (Customer/User only)
 router.post('/', authenticate, async (req, res) => {
@@ -11,7 +12,7 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(401).json({ error: 'Please sign in to place an order.' });
     }
 
-    const { items, totalPrice, deliveryType, address, paymentMethod, customerName, customerPhone } = req.body;
+    const { items, totalPrice, deliveryType, address, paymentMethod, customerName, customerPhone, latitude, longitude } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ error: 'No items in the cart.' });
@@ -29,21 +30,49 @@ router.post('/', authenticate, async (req, res) => {
       }
     }
 
-    // 2. Process payment (if wallet-based payment simulation)
+    // 2. Calculate dynamic discount and process payment (wallet-based simulation)
+    const orderCountRes = await query('SELECT COUNT(*)::integer FROM orders WHERE user_id = $1', [userId]);
+    const orderCount = parseInt(orderCountRes.rows[0]?.count || 0);
+
+    let discountPercentage = 0;
+    if (orderCount === 0) {
+      discountPercentage = 10;
+    } else if (orderCount === 4) {
+      discountPercentage = 30;
+    }
+
+    let calculatedSubtotal = 0;
+    for (const item of items) {
+      const itemRes = await query('SELECT price FROM bakery_items WHERE id = $1', [item.id]);
+      if (itemRes.rows.length === 0) {
+        return res.status(404).json({ error: `Item ${item.name} not found.` });
+      }
+      const dbBasePrice = parseFloat(itemRes.rows[0].price);
+      let expectedPrice = dbBasePrice;
+      if (item.customizations && item.customizations.weight === '1 Kg') {
+        expectedPrice += 400.00;
+      }
+      calculatedSubtotal += expectedPrice * item.quantity;
+    }
+
+    const deliveryCharge = deliveryType === 'Delivery' ? 40 : 0;
+    const discountAmount = calculatedSubtotal * (discountPercentage / 100);
+    const finalTotalPrice = parseFloat((calculatedSubtotal - discountAmount + deliveryCharge).toFixed(2));
+
     let paymentStatus = 'Pending';
-    if (paymentMethod === 'Card' || paymentMethod === 'UPI') {
-      // Simulate real-time payment gateway logic
-      // In production, verify transaction from Stripe/Razorpay
-      // Demos deduct from user wallet balance
-      if (parseFloat(req.user.wallet_balance) < parseFloat(totalPrice)) {
+    if (paymentMethod === 'Wallet') {
+      if (parseFloat(req.user.wallet_balance) < finalTotalPrice) {
         return res.status(400).json({ error: 'Insufficient wallet balance for this simulated transaction.' });
       }
       
       // Deduct wallet balance
-      await query('UPDATE users SET wallet_balance = wallet_balance - $1 WHERE id = $2', [parseFloat(totalPrice), userId]);
+      await query('UPDATE users SET wallet_balance = wallet_balance - $1 WHERE id = $2', [finalTotalPrice, userId]);
+      paymentStatus = 'Paid';
+    } else if (paymentMethod === 'Card' || paymentMethod === 'UPI') {
+      // Card / UPI payments are simulated as Paid without wallet deductions
       paymentStatus = 'Paid';
     } else {
-      // COD remains Pending
+      // COD remains Pending without wallet deductions
       paymentStatus = 'Pending';
     }
 
@@ -60,10 +89,22 @@ router.post('/', authenticate, async (req, res) => {
 
     // 4. Save order to database
     const orderRes = await query(
-      `INSERT INTO orders (user_id, items, total_price, status, delivery_type, address, payment_method, payment_status, customer_name, customer_phone)
-       VALUES ($1, $2, $3, 'Placed', $4, $5, $6, $7, $8, $9)
+      `INSERT INTO orders (user_id, items, total_price, status, delivery_type, address, payment_method, payment_status, customer_name, customer_phone, latitude, longitude)
+       VALUES ($1, $2, $3, 'Placed', $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
-      [userId, JSON.stringify(items), parseFloat(totalPrice), deliveryType, address || 'Pickup Counter', paymentMethod, paymentStatus, customerName, customerPhone]
+      [
+        userId,
+        JSON.stringify(items),
+        finalTotalPrice,
+        deliveryType,
+        address || 'Pickup Counter',
+        paymentMethod,
+        paymentStatus,
+        customerName,
+        customerPhone,
+        latitude ? parseFloat(latitude) : null,
+        longitude ? parseFloat(longitude) : null
+      ]
     );
 
     res.status(201).json(orderRes.rows[0]);
@@ -144,6 +185,9 @@ router.post('/bulk-enquiry', async (req, res) => {
        RETURNING *`,
       [name, email, phone, eventDate, parseInt(quantity), notes || '']
     );
+
+    // Send confirmation email to the client
+    await sendBulkEnquiryEmail(email, name, parseInt(quantity), eventDate);
 
     res.status(201).json(result.rows[0]);
   } catch (err) {

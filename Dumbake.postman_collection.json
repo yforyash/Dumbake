@@ -1,0 +1,628 @@
+{
+  "info": {
+    "_postman_id": "c8d8b1f4-3d90-482a-a92c-806d2c499e90",
+    "name": "Dumbake Bakery API",
+    "description": "Comprehensive API collection for testing and developing Dumbake Full-stack platform endpoints including user authentication, OTP validation, inventory catalog, order checkouts, dashboard analytics, reviews, and AI recommendations.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "User Authentication & OTP",
+      "item": [
+        {
+          "name": "1. Generate & Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/send-otp",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "send-otp"
+              ]
+            },
+            "description": "Generates a 6-digit random OTP verification code, saves it to the database for the given email (creating a stub unverified user if new), and sends a real email using SMTP."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Register Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"customer@example.com\",\n  \"passwordHash\": \"8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Registers a new user profile as unverified. Automatically assigns role = 'admin' if the email matches the configured ADMIN_EMAIL, otherwise registers as 'user'. Dispatches verification OTP code to email."
+          },
+          "response": []
+        },
+        {
+          "name": "3. Verify OTP Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@example.com\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/verify",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "verify"
+              ]
+            },
+            "description": "Validates the 6-digit OTP code sent to the email. If correct, sets is_verified = TRUE in the database and returns the logged-in user profile."
+          },
+          "response": []
+        },
+        {
+          "name": "4. Login User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@example.com\",\n  \"passwordHash\": \"8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticates user credentials. If the email is registered but unverified, returns a status of unverified and dispatches a fresh verification OTP code."
+          },
+          "response": []
+        },
+        {
+          "name": "5. Fetch Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "profile"
+              ]
+            },
+            "description": "Retrieves the user session profile details using the x-user-id header."
+          },
+          "response": []
+        },
+        {
+          "name": "6. Newsletter Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"gourmet@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/subscribe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "subscribe"
+              ]
+            },
+            "description": "Subscribes the email to the newsletter and sends a confirmation welcome email with a coupon code via SMTP."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Bakery Items (Catalog)",
+      "item": [
+        {
+          "name": "Get Menu Catalog",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/items?category=Brookies&search=&eggless=",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "items"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "Brookies",
+                  "description": "Optional category filter"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Optional keyword search filter"
+                },
+                {
+                  "key": "eggless",
+                  "value": "",
+                  "description": "Optional 'true' / 'false' recipe filter"
+                }
+              ]
+            },
+            "description": "Retrieves filtered and searched menu items from the inventory."
+          },
+          "response": []
+        },
+        {
+          "name": "Add Bakery Item (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "1",
+                "description": "Requires admin role (User ID 1 is default seeded admin)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Raspberry White Chocolate Cookie slab\",\n  \"description\": \"Giant chewy golden cookie loaded with freeze-dried raspberries and sweet white chocolate chips.\",\n  \"price\": 160.00,\n  \"category\": \"Pastries & Cookies\",\n  \"image_url\": \"/dumbake_savories.png\",\n  \"is_eggless\": true,\n  \"is_bestseller\": true,\n  \"stock_quantity\": 15,\n  \"status\": \"available\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "items"
+              ]
+            },
+            "description": "Creates a new item in the catalog. Restricted to administrators."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Bakery Item (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "1"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 180.00,\n  \"stock_quantity\": 20\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/items/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "1"
+              ]
+            },
+            "description": "Modifies catalog items price, stock levels, or details. Restricted to administrators."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Bakery Item (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/items/18",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "items",
+                "18"
+              ]
+            },
+            "description": "Removes a bakery item from the catalog. Restricted to administrators."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Orders & Enquiries",
+      "item": [
+        {
+          "name": "Submit Checkout Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "1"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"id\": 1,\n      \"name\": \"Dumbake Signature Fudgy Brookies\",\n      \"price\": 150.00,\n      \"quantity\": 2\n    }\n  ],\n  \"totalPrice\": 300.00,\n  \"deliveryType\": \"Delivery\",\n  \"address\": \"Circular Road, Ranchi\",\n  \"paymentMethod\": \"Wallet\",\n  \"customerName\": \"Ishika\",\n  \"customerPhone\": \"+91 99999 88888\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "description": "Places a new checkout order. Supports payment method = 'Wallet' (deducts from balance) or 'COD'. Verifies dynamic first/fifth order loyalty discounts."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Customer Order History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/history",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "history"
+              ]
+            },
+            "description": "Retrieves the customer's personal order history logs."
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Bulk Event Enquiry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Amit Verma\",\n  \"email\": \"client@example.com\",\n  \"phone\": \"+91 98765 43210\",\n  \"eventDate\": \"2026-07-15\",\n  \"quantity\": 50,\n  \"notes\": \"Requires custom packaging with gold ribbons for anniversary corporate gifting.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/orders/bulk-enquiry",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "bulk-enquiry"
+              ]
+            },
+            "description": "Registers a custom bulk order query and sends a real confirmation email receipt to the client."
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch All Orders (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "description": "Retrieves all platform orders processed. Restricted to administrators."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Order Status (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "1"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Delivered\",\n  \"payment_status\": \"Paid\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/orders/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "1"
+              ]
+            },
+            "description": "Updates order workflow status (Placed, Preparing, Ready, Delivered, Cancelled) and payment status. Restricted to administrators."
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch Bulk Enquiries (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/bulk-enquiries",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "bulk-enquiries"
+              ]
+            },
+            "description": "Retrieves all custom bulk event enquiries. Restricted to administrators."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Customer Reviews",
+      "item": [
+        {
+          "name": "Fetch Reviews List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/reviews",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "reviews"
+              ]
+            },
+            "description": "Retrieves all customer reviews (with associated item names joined)."
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Flavour Log",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "1"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewerName\": \"Aarav Kumar\",\n  \"rating\": 5,\n  \"comment\": \"Amazing Rose Bento cake! Perfect sweetness and beautiful designs.\",\n  \"itemId\": 8\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/reviews",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "reviews"
+              ]
+            },
+            "description": "Logs a new customer review. Supports linking the log to a specific bakery item_id."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "AI Recommendations",
+      "item": [
+        {
+          "name": "Fetch Personalized AI Recommendations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/ai/recommendations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "recommendations"
+              ]
+            },
+            "description": "Retrieves personalized menu item recommendations with dynamic AI-generated reasonings based on order history."
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch Predictive Bestsellers (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/ai/bestsellers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "bestsellers"
+              ]
+            },
+            "description": "Retrieves AI-calculated bestseller volume predictions computed over the last 30 days orders."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5001",
+      "type": "string"
+    }
+  ]
+}
