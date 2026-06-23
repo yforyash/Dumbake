@@ -1223,9 +1223,15 @@ p {
   color: rgba(255, 255, 255, 0.45);
 }
 
-.grid-2, .grid-3, .grid-4 {
-  display: grid;
-  grid-template-columns: 1fr;
+@media (max-width: 575px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 767px) {
+  .grid-3, .grid-4 {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {

@@ -494,19 +494,16 @@ export default function Home({ user, onAddToCart }) {
             boxShadow: 'var(--shadow)',
             position: 'relative'
           }}>
-            <video 
-              autoPlay 
-              loop 
-              muted 
-              playsInline 
+            <iframe 
+              src="https://lottiefiles.com/iframe/lf20_w51pcehl" 
               style={{
                 width: '100%',
                 height: '100%',
-                objectFit: 'cover'
+                border: 'none',
+                backgroundColor: 'transparent'
               }}
-            >
-              <source src="/bakery_video.mp4" type="video/mp4" />
-            </video>
+              title="Cartoon Baking Cake"
+            ></iframe>
           </div>
         </div>
       </section>
