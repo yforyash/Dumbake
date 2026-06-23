@@ -5,6 +5,7 @@ import { Sparkles, Leaf, Plus, Star, MessageSquarePlus, RefreshCw, Send, Check }
 import { fetchItems, fetchAIRecommendations, postReview, fetchReviews, submitBulkEnquiry } from '../services/api';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
+import BakingAnimation from '../components/BakingAnimation';
 
 export default function Home({ user, onAddToCart }) {
   const navigate = useNavigate();
@@ -494,16 +495,7 @@ export default function Home({ user, onAddToCart }) {
             boxShadow: 'var(--shadow)',
             position: 'relative'
           }}>
-            <iframe 
-              src="https://lottiefiles.com/iframe/lf20_w51pcehl" 
-              style={{
-                width: '100%',
-                height: '100%',
-                border: 'none',
-                backgroundColor: 'transparent'
-              }}
-              title="Cartoon Baking Cake"
-            ></iframe>
+            <BakingAnimation />
           </div>
         </div>
       </section>
