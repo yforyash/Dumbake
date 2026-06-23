@@ -506,7 +506,7 @@ export default function Home({ user, onAddToCart }) {
                 objectFit: 'cover'
               }}
             >
-              <source src="https://assets.mixkit.co/videos/preview/mixkit-decorating-a-chocolate-cake-with-frosting-42171-large.mp4" type="video/mp4" />
+              <source src="/bakery_video.mp4" type="video/mp4" />
             </video>
           </div>
         </div>

@@ -112,6 +112,30 @@ export default function Header({ user, onLogout, cartCount, onCartClick, activeA
                   <User size={16} style={{ color: 'var(--accent-color)' }} />
                   {(user.name || 'User').split(' ')[0]}
                 </span>
+                {user.role === 'user' && (
+                  <Link 
+                    to="/order-history" 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '4px', 
+                      color: 'var(--accent-color)', 
+                      fontWeight: '700', 
+                      fontSize: '0.85rem',
+                      textDecoration: 'none',
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '12px',
+                      backgroundColor: 'var(--primary-light)',
+                      border: '1.2px solid var(--border-color)',
+                      transition: 'all 0.2s ease',
+                      marginRight: '5px'
+                    }}
+                    className="my-orders-nav-link"
+                  >
+                    <History size={16} />
+                    <span>My Orders</span>
+                  </Link>
+                )}
                 <button onClick={handleLogoutClick} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '12px' }}>
                   Logout
                 </button>
