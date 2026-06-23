@@ -3,14 +3,13 @@ const router = express.Router();
 const crypto = require('crypto');
 const { query } = require('../config/db');
 const { authenticate } = require('../middlewares/auth');
-const { sendVerificationEmail, sendNewsletterSubscriptionEmail } = require('../utils/mailer');
+const { sendVerificationCode, sendNewsletterWelcome } = require('../utils/notifications');
 
 // Register user
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, passwordHash } = req.body;
+    const { name, email, passwordHash, phone } = req.body;
     
-    // Determine user role dynamically: if email matches configured ADMIN_EMAIL, give them 'admin' role
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@dumbake.com';
     const role = (email.toLowerCase() === adminEmail.toLowerCase()) ? 'admin' : 'user';
 
@@ -21,16 +20,15 @@ router.post('/register', async (req, res) => {
       if (existingUser.is_verified) {
         return res.status(400).json({ error: 'Email already registered' });
       } else {
-        // Unverified user: update their details, generate a new code, and proceed!
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const result = await query(
           `UPDATE users 
-           SET name = $1, password_hash = $2, verification_code = $3, role = $4 
-           WHERE email = $5 
-           RETURNING id, name, email, role, wallet_balance, is_verified`,
-          [name, passwordHash, code, role, email]
+           SET name = $1, password_hash = $2, verification_code = $3, role = $4, phone = $5
+           WHERE email = $6 
+           RETURNING id, name, email, role, wallet_balance, is_verified, phone`,
+          [name, passwordHash, code, role, phone || null, email]
         );
-        await sendVerificationEmail(email, code);
+        await sendVerificationCode(email, phone || null, code);
         return res.status(201).json({
           ...result.rows[0]
         });
@@ -40,16 +38,16 @@ router.post('/register', async (req, res) => {
     // Generate 6-digit verification code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Default balance is 1000.00 to make simulated demo payments easy!
+    // Default balance is 1000.00
     const result = await query(
-      `INSERT INTO users (name, email, password_hash, role, wallet_balance, is_verified, verification_code)
-       VALUES ($1, $2, $3, $4, 1000.00, FALSE, $5)
-       RETURNING id, name, email, role, wallet_balance, is_verified`,
-      [name, email, passwordHash, role, code]
+      `INSERT INTO users (name, email, password_hash, role, wallet_balance, is_verified, verification_code, phone)
+       VALUES ($1, $2, $3, $4, 1000.00, FALSE, $5, $6)
+       RETURNING id, name, email, role, wallet_balance, is_verified, phone`,
+      [name, email, passwordHash, role, code, phone || null]
     );
 
-    // Send verification email (calls real email if env credentials exist, logs to terminal console otherwise)
-    await sendVerificationEmail(email, code);
+    // Send verification code (email + SMS if phone is provided)
+    await sendVerificationCode(email, phone || null, code);
 
     res.status(201).json({
       ...result.rows[0]
@@ -118,7 +116,7 @@ router.post('/login', async (req, res) => {
     const { email, passwordHash } = req.body;
     
     const result = await query(
-      'SELECT id, name, email, password_hash, role, wallet_balance, is_verified FROM users WHERE email = $1',
+      'SELECT id, name, email, password_hash, role, wallet_balance, is_verified, phone FROM users WHERE email = $1',
       [email]
     );
     
@@ -132,12 +130,11 @@ router.post('/login', async (req, res) => {
     }
 
     if (!user.is_verified) {
-      // Regenerate verification code on login trigger so they can verify!
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       await query('UPDATE users SET verification_code = $1 WHERE email = $2', [code, email]);
-      await sendVerificationEmail(email, code);
+      await sendVerificationCode(email, user.phone, code);
       return res.status(400).json({
-        error: 'Email address not verified. Please verify your email first.',
+        error: 'Email address not verified. Please verify your email/phone first.',
         unverified: true
       });
     }

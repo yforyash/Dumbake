@@ -10,6 +10,7 @@ import Checkout from './pages/Checkout';
 import AdminDashboard from './pages/AdminDashboard';
 import OwnerDashboard from './pages/OwnerDashboard';
 import OrderHistory from './pages/OrderHistory';
+import RiderConsole from './pages/RiderConsole';
 import { fetchProfile, fetchAddresses, addAddress, deleteAddress } from './services/api';
 import AddressModal from './components/AddressModal';
 
@@ -255,6 +256,16 @@ export default function App() {
               element={
                 user ? (
                   <OrderHistory user={user} />
+                ) : (
+                  <Navigate to="/login" />
+                )
+              } 
+            />
+            <Route 
+              path="/rider" 
+              element={
+                user ? (
+                  <RiderConsole user={user} />
                 ) : (
                   <Navigate to="/login" />
                 )

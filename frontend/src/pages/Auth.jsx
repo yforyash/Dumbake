@@ -121,12 +121,25 @@ export default function Auth({ onLoginSuccess, cartItems = [] }) {
             <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem' }}>Join for sweet personalized bakes.</p>
             
             <Formik
-              initialValues={{ name: '', email: '', password: '' }}
+              initialValues={{ name: '', email: '', password: '', phone: '' }}
               onSubmit={async (values, { setSubmitting }) => {
                 setError('');
                 setSuccess('');
+                
+                if (!values.phone) {
+                  setError('Phone number is required.');
+                  setSubmitting(false);
+                  return;
+                }
+                const phoneRegex = /^[6-9]\d{9}$/;
+                if (!phoneRegex.test(values.phone)) {
+                  setError('Please enter a valid 10-digit Indian mobile number.');
+                  setSubmitting(false);
+                  return;
+                }
+
                 try {
-                  const res = await registerUser(values.name, values.email, hash(values.password), 'user');
+                  const res = await registerUser(values.name, values.email, hash(values.password), 'user', values.phone);
                   setRegisteredEmail(values.email);
                   setSuccess('Registration successful! Please enter the 6-digit verification code.');
                   setMode('verify');
@@ -146,6 +159,11 @@ export default function Auth({ onLoginSuccess, cartItems = [] }) {
                   <div className="form-group">
                     <label className="form-label">Email Address</label>
                     <Field name="email" type="email" className="form-input" required placeholder="john@example.com" />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Phone Number</label>
+                    <Field name="phone" type="tel" className="form-input" required placeholder="9876543210" />
                   </div>
 
                   <div className="form-group">

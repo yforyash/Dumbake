@@ -32,11 +32,11 @@ export async function loginUser(email, passwordHash) {
   return data;
 }
 
-export async function registerUser(name, email, passwordHash, role) {
+export async function registerUser(name, email, passwordHash, role, phone) {
   const res = await fetch(`${BASE_URL}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, passwordHash, role }),
+    body: JSON.stringify({ name, email, passwordHash, role, phone }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Registration failed');
@@ -281,6 +281,77 @@ export async function deleteAddress(id) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to delete address');
+  return data;
+}
+
+// 6. Payment Services
+export async function createStripePaymentIntent(amount) {
+  const res = await fetch(`${BASE_URL}/payments/stripe/create-intent`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': getUserIdHeader()
+    },
+    body: JSON.stringify({ amount })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Stripe intent creation failed');
+  return data;
+}
+
+export async function createRazorpayOrder(amount) {
+  const res = await fetch(`${BASE_URL}/payments/razorpay/create-order`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': getUserIdHeader()
+    },
+    body: JSON.stringify({ amount })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Razorpay order creation failed');
+  return data;
+}
+
+export async function verifyRazorpayPayment(paymentData) {
+  const res = await fetch(`${BASE_URL}/payments/razorpay/verify`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': getUserIdHeader()
+    },
+    body: JSON.stringify(paymentData)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Razorpay verification failed');
+  return data;
+}
+
+export async function updateRiderLocation(orderId, latitude, longitude) {
+  const res = await fetch(`${BASE_URL}/orders/${orderId}/rider-location`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': getUserIdHeader()
+    },
+    body: JSON.stringify({ latitude, longitude })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to update rider location');
+  return data;
+}
+
+export async function updateRiderStatus(orderId, status) {
+  const res = await fetch(`${BASE_URL}/orders/${orderId}/rider-status`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': getUserIdHeader()
+    },
+    body: JSON.stringify({ status })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to update rider delivery status');
   return data;
 }
 

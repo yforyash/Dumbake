@@ -452,7 +452,6 @@ export default function Home({ user, onAddToCart }) {
       <section style={{ margin: '4rem 0' }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr',
           gap: '30px',
           alignItems: 'center',
           backgroundColor: 'var(--secondary-color)',
@@ -695,7 +694,7 @@ export default function Home({ user, onAddToCart }) {
       </section>
 
       {/* 9. Reviews Section */}
-      <section style={{ margin: '5rem 0', display: 'grid', gridTemplateColumns: '1fr', gap: '30px' }} className="grid-2">
+      <section style={{ margin: '5rem 0', display: 'grid', gap: '30px' }} className="grid-2">
         <div>
           <h3 style={{ fontSize: '1.8rem', fontWeight: '800', marginBottom: '1.5rem' }}>Ranchi Flavour Logs</h3>
           {reviews.length === 0 ? (

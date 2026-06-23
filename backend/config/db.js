@@ -152,44 +152,50 @@ function runMockQuery(text, params = []) {
 
   // 3. INSERT INTO users
   if (norm.includes('insert into users')) {
-    let name, email, passwordHash, role, code;
+    let name, email, passwordHash, role, code, phone;
     
-    if (params && params.length === 5) {
+    if (params && params.length === 6) {
       name = params[0];
       email = params[1];
       passwordHash = params[2];
       role = params[3];
       code = params[4];
+      phone = params[5];
+    } else if (params && params.length === 5) {
+      name = params[0];
+      email = params[1];
+      passwordHash = params[2];
+      role = params[3];
+      code = params[4];
+      phone = null;
     } else if (norm.includes('verification_code')) {
-      // INSERT INTO users (name, email, password_hash, role, wallet_balance, is_verified, verification_code) VALUES ($1, $2, $3, 'user', 1000.00, FALSE, $4)
-      // params: [name, email, passwordHash, code]
       name = params && params[0] ? params[0] : 'Ishika (Owner)';
       email = params && params[1] ? params[1] : 'admin@dumbake.com';
       passwordHash = params && params[2] ? params[2] : '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
       code = params && params[3] ? params[3] : null;
       role = 'user';
+      phone = null;
     } else if (params && params.length === 3) {
-      // INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'user')
-      // params: [name, email, passwordHash]
       name = params[0];
       email = params[1];
       passwordHash = params[2];
       role = 'user';
       code = null;
+      phone = null;
     } else if (params && params.length === 2) {
-      // INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, 'mock_hash', 'user')
-      // params: [name, email]
       name = params[0];
       email = params[1];
       passwordHash = 'mock_hash';
       role = 'user';
       code = null;
+      phone = null;
     } else {
       name = params && params[0] ? params[0] : 'Ishika (Owner)';
       email = params && params[1] ? params[1] : 'admin@dumbake.com';
       passwordHash = params && params[2] ? params[2] : '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
       role = (params && params[3]) || 'admin';
       code = null;
+      phone = null;
     }
 
     const existingIdx = mockState.users.findIndex(u => u.email === email);
@@ -201,7 +207,8 @@ function runMockQuery(text, params = []) {
       role: role,
       wallet_balance: existingIdx >= 0 ? mockState.users[existingIdx].wallet_balance : 1000.00,
       is_verified: existingIdx >= 0 ? mockState.users[existingIdx].is_verified : false,
-      verification_code: code
+      verification_code: code,
+      phone: phone || (existingIdx >= 0 ? mockState.users[existingIdx].phone : null)
     };
 
     if (existingIdx >= 0) {
@@ -216,7 +223,8 @@ function runMockQuery(text, params = []) {
       email: newUser.email,
       role: newUser.role,
       wallet_balance: newUser.wallet_balance,
-      is_verified: newUser.is_verified
+      is_verified: newUser.is_verified,
+      phone: newUser.phone
     };
     return { rows: [publicUser] };
   }
@@ -246,6 +254,9 @@ function runMockQuery(text, params = []) {
           user.verification_code = params[2];
           if (norm.includes('role =')) {
             user.role = params[3];
+          }
+          if (norm.includes('phone =')) {
+            user.phone = params[4] || null;
           }
         } else {
           user.verification_code = params[0];
@@ -477,6 +488,35 @@ function runMockQuery(text, params = []) {
       saveMockState();
     }
     return { rows: [] };
+  }
+
+  // 13. UPDATE orders
+  if (norm.includes('update orders')) {
+    if (norm.includes('rider_latitude') || norm.includes('rider_longitude')) {
+      const riderLat = params[0] ? parseFloat(params[0]) : null;
+      const riderLng = params[1] ? parseFloat(params[1]) : null;
+      const orderId = parseInt(params[2]);
+      const order = mockState.orders.find(o => o.id === orderId);
+      if (order) {
+        order.rider_latitude = riderLat;
+        order.rider_longitude = riderLng;
+        saveMockState();
+      }
+      return { rows: order ? [order] : [] };
+    } else {
+      const orderId = parseInt(params[params.length - 1]);
+      const order = mockState.orders.find(o => o.id === orderId);
+      if (order) {
+        if (norm.includes('status = coalesce') || norm.includes('status = $1')) {
+          order.status = params[0] || order.status;
+        }
+        if (norm.includes('payment_status =')) {
+          order.payment_status = norm.includes('status =') ? (params[1] || order.payment_status) : (params[0] || order.payment_status);
+        }
+        saveMockState();
+      }
+      return { rows: order ? [order] : [] };
+    }
   }
 
   // Fallback default response

@@ -1223,4 +1223,86 @@ p {
   color: rgba(255, 255, 255, 0.45);
 }
 
+.grid-2, .grid-3, .grid-4 {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 768px) {
+  .header-container {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 0.6rem 1rem !important;
+  }
+  .header-container form {
+    order: 3;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-top: 4px;
+  }
+  .location-header-widget {
+    max-width: 130px !important;
+    padding: 0.3rem 0.6rem !important;
+  }
+  .location-header-widget span {
+    font-size: 0.7rem !important;
+  }
+  .logo {
+    font-size: 1.6rem !important;
+  }
+  .btn {
+    padding: 0.7rem 1.4rem !important;
+    font-size: 0.85rem !important;
+    min-height: 44px;
+  }
+  .payment-methods {
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+  }
+  .dialog-content {
+    padding: 1.5rem !important;
+    width: 95% !important;
+  }
+  .cart-modal {
+    max-width: 100% !important;
+  }
+  .cart-items {
+    padding: 1rem !important;
+  }
+  .cart-header {
+    padding: 1rem !important;
+  }
+  .cart-footer {
+    padding: 1rem !important;
+  }
+  .instagram-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px;
+  }
+  .gifting-specials-section {
+    padding: 2.5rem 1rem !important;
+    margin: 2rem 0 !important;
+  }
+  .story-col-light, .story-col-dark {
+    padding: 1.5rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .title-large {
+    font-size: 2rem !important;
+  }
+  .category-circle-img-wrapper {
+    width: 70px !important;
+    height: 70px !important;
+  }
+  .category-circle-list {
+    gap: 1rem !important;
+  }
+  .btn-primary, .btn-secondary, .btn-outline {
+    font-size: 0.8rem !important;
+    padding: 0.65rem 1.25rem !important;
+  }
+}
+
 

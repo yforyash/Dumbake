@@ -1,29 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchOrders } from '../services/api';
-import { ShoppingBag, ChevronRight, Calendar, Info } from 'lucide-react';
+import { ShoppingBag, Calendar } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 
 const bakeryIcon = L.divIcon({
-  html: `<div style="background-color: #FFAEC9; width: 22px; height: 22px; border: 3px solid #FFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 8px rgba(0,0,0,0.3); font-size: 11px;">🍰</div>`,
+  html: `<div style="background-color: #FAF6EE; width: 26px; height: 26px; border: 3px solid var(--accent-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 8px rgba(154,15,41,0.25); font-size: 13px;">🍰</div>`,
   className: 'custom-bakery-marker',
-  iconSize: [26, 26],
-  iconAnchor: [13, 13]
+  iconSize: [30, 30],
+  iconAnchor: [15, 15]
 });
 
 const customerIcon = L.divIcon({
-  html: `<div style="background-color: #D25C78; width: 22px; height: 22px; border: 3px solid #FFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 8px rgba(0,0,0,0.3); font-size: 11px;">🏠</div>`,
+  html: `<div style="background-color: var(--primary-light); width: 26px; height: 26px; border: 3px solid var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 8px rgba(226,61,82,0.25); font-size: 13px;">🏠</div>`,
   className: 'custom-customer-marker',
-  iconSize: [26, 26],
-  iconAnchor: [13, 13]
+  iconSize: [30, 30],
+  iconAnchor: [15, 15]
 });
 
 const deliveryIcon = L.divIcon({
-  html: `<div style="background-color: #3C2227; width: 24px; height: 24px; border: 3px solid #FFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 8px rgba(0,0,0,0.3); font-size: 12px;">🛵</div>`,
+  html: `<div style="background-color: var(--accent-color); width: 28px; height: 28px; border: 3px solid #FFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 8px rgba(0,0,0,0.3); font-size: 14px; animation: bounce 1s infinite alternate;">🛵</div>`,
   className: 'custom-delivery-marker',
-  iconSize: [28, 28],
-  iconAnchor: [14, 14]
+  iconSize: [32, 32],
+  iconAnchor: [16, 16]
 });
 
 function DeliveryTrackingMap({ order }) {
@@ -31,19 +31,25 @@ function DeliveryTrackingMap({ order }) {
   const customer = [parseFloat(order.latitude), parseFloat(order.longitude)];
   const [progress, setProgress] = useState(0);
 
+  // Fallback visual simulation loop if coordinates aren't updated by rider Console
   useEffect(() => {
-    if (order.status !== 'Ready') {
+    if (order.status !== 'Dispatched') {
       setProgress(0);
       return;
     }
+    if (order.rider_latitude && order.rider_longitude) {
+      return;
+    }
     const interval = setInterval(() => {
-      setProgress(prev => (prev >= 1 ? 0 : prev + 0.01));
-    }, 150);
+      setProgress(prev => (prev >= 1 ? 0 : prev + 0.015));
+    }, 180);
     return () => clearInterval(interval);
-  }, [order.status]);
+  }, [order.status, order.rider_latitude, order.rider_longitude]);
 
   let deliveryBoyPos = bakery;
-  if (order.status === 'Ready') {
+  if (order.rider_latitude && order.rider_longitude) {
+    deliveryBoyPos = [parseFloat(order.rider_latitude), parseFloat(order.rider_longitude)];
+  } else if (order.status === 'Dispatched') {
     const currentLat = bakery[0] + (customer[0] - bakery[0]) * progress;
     const currentLng = bakery[1] + (customer[1] - bakery[1]) * progress;
     deliveryBoyPos = [currentLat, currentLng];
@@ -51,17 +57,17 @@ function DeliveryTrackingMap({ order }) {
     deliveryBoyPos = customer;
   }
 
-  // Seeding mock delivery rider details
   const riderName = "Amit Kumar";
-  const riderPhone = "+91 9151463571"; // Demo contact number
+  const riderPhone = "+91 9151463571"; 
 
   return (
     <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <span style={{ fontSize: '0.9rem', fontWeight: '850', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
         🛵 Live Order Tracking Map
       </span>
+      
       <div style={{
-        height: '260px',
+        height: '270px',
         borderRadius: '16px',
         overflow: 'hidden',
         border: '1.5px solid var(--border-color)',
@@ -71,11 +77,12 @@ function DeliveryTrackingMap({ order }) {
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <Marker position={bakery} icon={bakeryIcon} />
           <Marker position={customer} icon={customerIcon} />
-          {order.status !== 'Placed' && order.status !== 'Preparing' && (
+          {order.status === 'Dispatched' && (
             <Marker position={deliveryBoyPos} icon={deliveryIcon} />
           )}
           <Polyline positions={[bakery, customer]} color="var(--accent-color)" dashArray="5, 10" weight={3} />
         </MapContainer>
+        
         <div style={{
           position: 'absolute',
           bottom: '10px',
@@ -83,19 +90,21 @@ function DeliveryTrackingMap({ order }) {
           backgroundColor: '#ffffff',
           padding: '6px 12px',
           borderRadius: '8px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
           fontSize: '0.75rem',
           zIndex: 400,
           fontWeight: '700',
           color: 'var(--accent-color)'
         }}>
-          {order.status === 'Placed' || order.status === 'Preparing' ? '🍰 Baking fresh in kitchen...' :
-           order.status === 'Ready' ? '🛵 Rider is on the way to your address...' :
-           '🎉 Order Delivered! Enjoy your bakes!'}
+          {order.status === 'Placed' ? '⏳ Order placed, awaiting baking acceptance...' :
+           order.status === 'Preparing' ? '🥣 Chef Ishika is baking your fresh treats...' :
+           order.status === 'Ready' ? '🍰 Bakes ready! Waiting for delivery rider pickup...' :
+           order.status === 'Dispatched' ? '🛵 Rider Amit has loaded your bakes and is on the way!' :
+           '🎉 Order Delivered! Enjoy your fresh bakes!'}
         </div>
       </div>
 
-      {/* Delivery boy info and Timeline */}
+      {/* Delivery boy info */}
       <div style={{
         padding: '1.25rem',
         borderRadius: '16px',
@@ -114,7 +123,7 @@ function DeliveryTrackingMap({ order }) {
               Contact Number: {riderPhone}
             </p>
           </div>
-          {(order.status === 'Ready' || order.status === 'Delivered') && (
+          {(order.status === 'Dispatched' || order.status === 'Delivered') && (
             <a 
               href={`tel:${riderPhone}`} 
               style={{
@@ -144,9 +153,10 @@ function DeliveryTrackingMap({ order }) {
           </div>
           <div style={{ fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: '750', lineHeight: '1.4' }}>
             <strong>Current Status:</strong> {
-              order.status === 'Placed' ? '⏳ Your order is placed and awaiting kitchen preparation.' :
-              order.status === 'Preparing' ? '🥣 Chef Ishika is mixing fresh ingredients and baking your treats.' :
-              order.status === 'Ready' ? `🛵 Rider Amit has loaded your bakes and is on the route to your location.` :
+              order.status === 'Placed' ? '⏳ Awaiting kitchen configuration acceptance.' :
+              order.status === 'Preparing' ? '🥣 Chef Ishika is mixing fresh ingredients and baking your custom treats.' :
+              order.status === 'Ready' ? '🍰 Bakes are hot and boxed! Waiting for rider arrival.' :
+              order.status === 'Dispatched' ? '🛵 Rider Amit is en route with your packages. Watch them on the map!' :
               '🎉 Delivered! Enjoy your delicious bakes from Dumbake Ranchi.'
             }
           </div>
@@ -167,6 +177,21 @@ export default function OrderHistory({ user }) {
       return;
     }
     loadOrders();
+
+    // Set up silent polling every 6 seconds if there are active bakes
+    const interval = setInterval(async () => {
+      try {
+        const data = await fetchOrders();
+        const hasActive = data.some(o => ['Placed', 'Preparing', 'Ready', 'Dispatched'].includes(o.status));
+        if (hasActive) {
+          setOrders(data);
+        }
+      } catch (err) {
+        console.error('[Polling Error]', err);
+      }
+    }, 6000);
+
+    return () => clearInterval(interval);
   }, [user]);
 
   const loadOrders = async () => {
@@ -186,23 +211,24 @@ export default function OrderHistory({ user }) {
       case 'Placed': return 1;
       case 'Preparing': return 2;
       case 'Ready': return 3;
+      case 'Dispatched': return 3;
       case 'Delivered': return 4;
       default: return 0;
     }
   };
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: '5rem' }}>Loading your orders...</div>;
+    return <div style={{ textAlign: 'center', padding: '5rem', color: 'var(--accent-color)', fontWeight: '700' }}>Loading your orders...</div>;
   }
 
-  const ongoingOrders = orders.filter(o => ['Placed', 'Preparing', 'Ready'].includes(o.status));
+  const ongoingOrders = orders.filter(o => ['Placed', 'Preparing', 'Ready', 'Dispatched'].includes(o.status));
   const pastOrders = orders.filter(o => ['Delivered', 'Cancelled'].includes(o.status));
 
   const renderOrderCard = (order) => {
     const itemsList = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
     const step = getStepActive(order.status);
     return (
-      <div key={order.id} className="card" style={{ padding: '1.5rem' }}>
+      <div key={order.id} className="card" style={{ padding: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
         {/* Header info */}
         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -216,7 +242,7 @@ export default function OrderHistory({ user }) {
 
         {/* Items and total */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem', marginBottom: '1.5rem' }} className="grid-2">
-          <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '12px' }}>
+          <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
             <h4 style={{ fontSize: '0.9rem', marginBottom: '8px', color: 'var(--text-color)' }}>Items Summary</h4>
             {itemsList.map((i, idx) => (
               <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '4px' }}>
@@ -231,7 +257,7 @@ export default function OrderHistory({ user }) {
               Delivery Type: <span style={{ fontWeight: '600' }}>{order.delivery_type}</span>
             </div>
             <div style={{ marginBottom: '8px', fontSize: '0.9rem' }}>
-              Address: <span style={{ fontWeight: '600', color: 'var(--text-muted)' }}>{order.address}</span>
+              Address: <span style={{ fontWeight: '600', color: 'var(--text-muted)' }}>{order.address.split('|')[0]}</span>
             </div>
             <div style={{ marginBottom: '8px', fontSize: '0.9rem' }}>
               Payment: <span style={{ fontWeight: '600' }}>{order.payment_method} ({order.payment_status})</span>
@@ -252,7 +278,7 @@ export default function OrderHistory({ user }) {
               <div style={{ position: 'absolute', top: '8px', left: '0', width: `${((step - 1) / 3) * 100}%`, height: '3px', background: 'var(--accent-color)', zIndex: '2', transition: 'width 0.4s ease' }}></div>
 
               {/* Stepper Steps */}
-              {['Placed', 'Preparing', 'Ready', 'Delivered'].map((label, idx) => {
+              {['Placed', 'Preparing', 'Dispatched', 'Delivered'].map((label, idx) => {
                 const active = step >= idx + 1;
                 return (
                   <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: '3', flex: 1 }}>

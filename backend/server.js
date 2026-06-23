@@ -43,6 +43,7 @@ async function initDatabase() {
         wallet_balance NUMERIC(10, 2) DEFAULT 1000.00, -- Seeded with default balance for easy demo ordering!
         is_verified BOOLEAN DEFAULT FALSE,
         verification_code VARCHAR(10),
+        phone VARCHAR(20),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -51,6 +52,7 @@ async function initDatabase() {
     try {
       await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE`);
       await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code VARCHAR(10)`);
+      await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)`);
     } catch (e) {
       console.warn('[DB Init] ALTER TABLE users column checks bypassed (mock mode or other database):', e.message);
     }
@@ -158,6 +160,8 @@ async function initDatabase() {
     try {
       await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS latitude NUMERIC(10, 6);`);
       await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS longitude NUMERIC(10, 6);`);
+      await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS rider_latitude NUMERIC(10, 6);`);
+      await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS rider_longitude NUMERIC(10, 6);`);
     } catch (e) {
       console.log('Orders table check status:', e.message);
     }
@@ -187,6 +191,7 @@ app.use('/api/orders', require('./routes/orders'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/addresses', require('./routes/addresses'));
+app.use('/api/payments', require('./routes/payments'));
 
 
 

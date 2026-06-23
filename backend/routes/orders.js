@@ -3,6 +3,7 @@ const router = express.Router();
 const { query } = require('../config/db');
 const { authenticate, requireRole } = require('../middlewares/auth');
 const { sendBulkEnquiryEmail } = require('../utils/mailer');
+const { sendCheckoutReceipt, sendOrderStatusAlert, sendBulkEnquiryAlert } = require('../utils/notifications');
 
 // Create order (Customer/User only)
 router.post('/', authenticate, async (req, res) => {
@@ -121,7 +122,17 @@ router.post('/', authenticate, async (req, res) => {
       ]
     );
 
-    res.status(201).json(orderRes.rows[0]);
+    const order = orderRes.rows[0];
+
+    // Trigger HTML invoice receipt email via Resend and confirmation SMS via Twilio
+    sendCheckoutReceipt({
+      ...order,
+      customer_email: req.user.email
+    }).catch(err => {
+      console.error('[Notifications] Failed to send checkout receipt:', err.message);
+    });
+
+    res.status(201).json(order);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -179,7 +190,15 @@ router.put('/:id/status', authenticate, requireRole(['admin']), async (req, res)
     params.push(parseInt(id));
 
     const result = await query(updateSql, params);
-    res.json(result.rows[0]);
+    const updatedOrder = result.rows[0];
+
+    if (updatedOrder && status) {
+      sendOrderStatusAlert(updatedOrder, status).catch(err => {
+        console.error('[Notifications] Failed to send status alert:', err.message);
+      });
+    }
+
+    res.json(updatedOrder);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -214,6 +233,65 @@ router.get('/bulk-enquiries', authenticate, requireRole(['admin']), async (req, 
   try {
     const result = await query('SELECT * FROM bulk_enquiries ORDER BY created_at DESC');
     res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update rider real-time GPS coordinates
+router.put('/:id/rider-location', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { latitude, longitude } = req.body;
+    if (latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ error: 'Latitude and longitude coordinates are required.' });
+    }
+    const result = await query(
+      'UPDATE orders SET rider_latitude = $1, rider_longitude = $2 WHERE id = $3 RETURNING *',
+      [parseFloat(latitude), parseFloat(longitude), parseInt(id)]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update order delivery status (Rider Console actions)
+router.put('/:id/rider-status', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!['Dispatched', 'Delivered'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status update for rider console.' });
+    }
+
+    const orderCheck = await query('SELECT payment_method FROM orders WHERE id = $1', [parseInt(id)]);
+    if (orderCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+    
+    const order = orderCheck.rows[0];
+    let paymentStatusQuery = '';
+    if (status === 'Delivered' && (order.payment_method.includes('COD') || order.payment_method === 'COD')) {
+      paymentStatusQuery = `, payment_status = 'Paid'`;
+    }
+
+    const result = await query(
+      `UPDATE orders SET status = $1 ${paymentStatusQuery} WHERE id = $2 RETURNING *`,
+      [status, parseInt(id)]
+    );
+
+    const updatedOrder = result.rows[0];
+    if (updatedOrder) {
+      sendOrderStatusAlert(updatedOrder, status, req.user?.name).catch(err => {
+        console.error('[Notifications] Failed to send rider status alert:', err.message);
+      });
+    }
+
+    res.json(updatedOrder);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

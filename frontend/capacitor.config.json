@@ -1,0 +1,6 @@
+{
+  "appId": "com.dumbake.app",
+  "appName": "Dumbake",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
