@@ -9,21 +9,30 @@ const loadPreloadedState = () => {
   const savedUser = localStorage.getItem('dumbake_user');
   if (savedUser) {
     try {
-      preloadedState.auth = { user: JSON.parse(savedUser), loading: false, error: null };
+      const parsed = JSON.parse(savedUser);
+      if (parsed && typeof parsed === 'object') {
+        preloadedState.auth = { user: parsed, loading: false, error: null };
+      }
     } catch (e) {}
   }
   
   const savedCart = localStorage.getItem('dumbake_cart');
   if (savedCart) {
     try {
-      preloadedState.cart = { cartItems: JSON.parse(savedCart), isCartOpen: false };
+      const parsed = JSON.parse(savedCart);
+      if (Array.isArray(parsed)) {
+        preloadedState.cart = { cartItems: parsed, isCartOpen: false };
+      }
     } catch (e) {}
   }
   
   const savedAddress = localStorage.getItem('dumbake_active_address');
   if (savedAddress) {
     try {
-      preloadedState.address = { addresses: [], activeAddress: JSON.parse(savedAddress), isAddressOpen: false };
+      const parsed = JSON.parse(savedAddress);
+      if (parsed && typeof parsed === 'object') {
+        preloadedState.address = { addresses: [], activeAddress: parsed, isAddressOpen: false };
+      }
     } catch (e) {}
   }
   
