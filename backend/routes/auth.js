@@ -26,7 +26,7 @@ router.post('/register', async (req, res) => {
            RETURNING id, name, email, role, wallet_balance, is_verified, phone`,
           [name, passwordHash, code, role, phone || null, email]
         );
-        await sendVerificationCode(email, phone || null, code);
+        sendVerificationCode(email, phone || null, code).catch(err => console.error('[Mailer Error]', err));
         return res.status(201).json({
           ...result.rows[0]
         });
@@ -42,7 +42,7 @@ router.post('/register', async (req, res) => {
       [name, email, passwordHash, role, code, phone || null]
     );
 
-    await sendVerificationCode(email, phone || null, code);
+    sendVerificationCode(email, phone || null, code).catch(err => console.error('[Mailer Error]', err));
 
     res.status(201).json({
       ...result.rows[0]
@@ -117,7 +117,7 @@ router.post('/login', async (req, res) => {
     if (!user.is_verified) {
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       await query('UPDATE users SET verification_code = $1 WHERE email = $2', [code, email]);
-      await sendVerificationCode(email, user.phone, code);
+      sendVerificationCode(email, user.phone, code).catch(err => console.error('[Mailer Error]', err));
       return res.status(400).json({
         error: 'Email address not verified. Please verify your email/phone first.',
         unverified: true
@@ -259,7 +259,7 @@ router.post('/send-otp', async (req, res) => {
       );
     }
 
-    await sendVerificationCode(email, null, code);
+    sendVerificationCode(email, null, code).catch(err => console.error('[Mailer Error]', err));
 
     res.json({ message: 'Verification OTP sent successfully to ' + email });
   } catch (err) {
