@@ -15,7 +15,6 @@ function getUserIdHeader() {
   return 'Anonymous';
 }
 
-// 1. Auth Services
 export async function loginUser(email, passwordHash) {
   const res = await fetch(`${BASE_URL}/auth/login`, {
     method: 'POST',
@@ -85,7 +84,6 @@ export async function fetchProfile() {
   return data;
 }
 
-// 2. Item Services
 export async function fetchItems(category = '', search = '', eggless = false) {
   let url = `${BASE_URL}/items?`;
   if (category) url += `category=${encodeURIComponent(category)}&`;
@@ -143,7 +141,6 @@ export async function deleteBakeryItem(id) {
   return data;
 }
 
-// 3. Orders Services
 export async function postOrder(orderData) {
   const res = await fetch(`${BASE_URL}/orders`, {
     method: 'POST',
@@ -181,7 +178,6 @@ export async function updateOrderStatus(id, statusData) {
   return data;
 }
 
-// 4. Reviews Services
 export async function fetchReviews() {
   const res = await fetch(`${BASE_URL}/reviews`);
   const data = await res.json();
@@ -203,7 +199,6 @@ export async function postReview(reviewData) {
   return data;
 }
 
-// 5. AI Services
 export async function fetchAIRecommendations() {
   const res = await fetch(`${BASE_URL}/ai/recommendations`, {
     headers: { 'x-user-id': getUserIdHeader() }
@@ -284,7 +279,6 @@ export async function deleteAddress(id) {
   return data;
 }
 
-// 6. Payment Services
 export async function createStripePaymentIntent(amount) {
   const res = await fetch(`${BASE_URL}/payments/stripe/create-intent`, {
     method: 'POST',

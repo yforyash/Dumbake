@@ -22,7 +22,7 @@ async function verifyLogistics() {
   console.log('--- TESTING OSRM ROUTING DISTANCE CALCULATION ---');
   const bakeryLng = 85.3096;
   const bakeryLat = 23.3441;
-  // A test address in Ranchi (e.g. Lalpur coordinates roughly: 23.3694, 85.3371)
+  
   const targetLng = 85.3371;
   const targetLat = 23.3694;
 
@@ -54,7 +54,7 @@ async function verifyLogistics() {
   }
 
   console.log('\n--- TESTING GEOPHYSICAL BOUNDARY LIMIT BLOCK (OUT OF BOUNDS) ---');
-  // Coords outside Ranchi (e.g. Bangalore: 12.9716, 77.5946)
+  
   const farLng = 77.5946;
   const farLat = 12.9716;
   const farUrl = `https://router.project-osrm.org/route/v1/driving/${bakeryLng},${bakeryLat};${farLng},${farLat}?overview=false`;

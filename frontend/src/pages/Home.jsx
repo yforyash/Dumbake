@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { Sparkles, Leaf, Plus, Star, MessageSquarePlus, RefreshCw, Send, Check } from 'lucide-react';
 import { fetchItems, fetchAIRecommendations, postReview, fetchReviews, submitBulkEnquiry } from '../services/api';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import BakingAnimation from '../components/BakingAnimation';
+import { addToCart } from '../store/slices/cartSlice';
 
-export default function Home({ user, onAddToCart }) {
+export default function Home() {
+  const dispatch = useDispatch();
+  const user = useSelector((state) => state.auth.user);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [aiRecs, setAiRecs] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Filtering states
+
   const [category, setCategory] = useState('');
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [eggless, setEggless] = useState(false);
@@ -35,18 +38,15 @@ export default function Home({ user, onAddToCart }) {
   const [reviewError, setReviewError] = useState('');
   const [reviewSuccess, setReviewSuccess] = useState('');
 
-  // Customize Modal States
   const [selectedItem, setSelectedItem] = useState(null);
   const [weight, setWeight] = useState('0.5 Kg');
   const [egglessChoice, setEgglessChoice] = useState(true);
   const [message, setMessage] = useState('');
   const [instructions, setInstructions] = useState('');
 
-  // Bulk Order Modal State
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [bulkSuccess, setBulkSuccess] = useState(false);
 
-  // Read search param changes
   useEffect(() => {
     const q = searchParams.get('search') || '';
     setSearch(q);
@@ -56,7 +56,7 @@ export default function Home({ user, onAddToCart }) {
       setTimeout(() => {
         const el = document.getElementById(scrollTarget);
         if (el) el.scrollIntoView({ behavior: 'smooth' });
-        // Clean param
+        
         searchParams.delete('scroll');
         setSearchParams(searchParams);
       }, 500);
@@ -72,12 +72,15 @@ export default function Home({ user, onAddToCart }) {
   };
 
   const handleConfirmAdd = () => {
-    onAddToCart(selectedItem, {
-      weight: selectedItem.category === 'Cakes' ? weight : null,
-      eggless: egglessChoice,
-      message: selectedItem.category === 'Cakes' ? message : null,
-      instructions
-    });
+    dispatch(addToCart({
+      item: selectedItem,
+      customizations: {
+        weight: selectedItem.category === 'Cakes' ? weight : null,
+        eggless: egglessChoice,
+        message: selectedItem.category === 'Cakes' ? message : null,
+        instructions
+      }
+    }));
     setSelectedItem(null);
   };
 
@@ -101,7 +104,7 @@ export default function Home({ user, onAddToCart }) {
 
   useEffect(() => {
     loadData();
-  }, [category, eggless, search]); // re-run queries on filters change
+  }, [category, eggless, search]); 
 
   const categoriesList = ['Brookies', 'Brownies', 'Cakes', 'Cupcakes', 'Pastries & Cookies', 'Gift Boxes'];
   
@@ -114,14 +117,12 @@ export default function Home({ user, onAddToCart }) {
     { name: 'Gift Boxes', image: '/dumbake_cupcakes.png' }
   ];
 
-  // Yup validation schema for customer review log
   const reviewValidationSchema = Yup.object().shape({
     reviewerName: user ? Yup.string() : Yup.string().required('Please enter your name'),
     rating: Yup.number().required('Please select a rating'),
     comment: Yup.string().min(5, 'Feedback must be at least 5 characters').required('Feedback comment is required')
   });
 
-  // Yup validation schema for bulk order enquiry
   const bulkValidationSchema = Yup.object().shape({
     name: Yup.string().required('Name is required'),
     email: Yup.string().email('Invalid email').required('Email is required'),
@@ -133,10 +134,9 @@ export default function Home({ user, onAddToCart }) {
 
   return (
     <div className="container">
-      
-      {/* 1. Split Hero Section (Screenshot 1 alignment) */}
+
       <section className="grid grid-2" style={{ marginBottom: '3.5rem' }}>
-        {/* Left Side: Celebration Cakes */}
+        
         <div className="card" style={{ position: 'relative', height: '400px', borderRadius: 'var(--border-radius-lg)', overflow: 'hidden' }}>
           <img src="/dumbake_mango_cake.png" alt="Celebration Cakes" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', background: 'linear-gradient(to top, rgba(60,34,39,0.9) 0%, rgba(60,34,39,0.3) 70%, transparent 100%)', padding: '2rem 1.5rem', color: '#ffffff' }}>
@@ -156,7 +156,6 @@ export default function Home({ user, onAddToCart }) {
           </div>
         </div>
 
-        {/* Right Side: Croissants & Danishes */}
         <div className="card" style={{ position: 'relative', height: '400px', borderRadius: 'var(--border-radius-lg)', overflow: 'hidden' }}>
           <img src="/dumbake_savories.png" alt="Croissants & Danishes" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', background: 'linear-gradient(to top, rgba(60,34,39,0.9) 0%, rgba(60,34,39,0.3) 70%, transparent 100%)', padding: '2rem 1.5rem', color: '#ffffff' }}>
@@ -177,7 +176,6 @@ export default function Home({ user, onAddToCart }) {
         </div>
       </section>
 
-      {/* 2. Feature Icons Row (Screenshot 2 alignment) */}
       <section style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '30px', margin: '4rem 0', textAlign: 'center' }}>
         {[
           { icon: '🌾', label: 'Finest ingredients. Globally sourced.' },
@@ -197,7 +195,6 @@ export default function Home({ user, onAddToCart }) {
         ))}
       </section>
 
-      {/* 2.5 Promo / Loyalty Status Banner */}
       <section style={{ margin: '2rem 0' }}>
         {!user ? (
           <div style={{ 
@@ -265,7 +262,6 @@ export default function Home({ user, onAddToCart }) {
         )}
       </section>
 
-      {/* 3. Bestsellers slider grid (Screenshot 2 alignment) */}
       <section id="best-sellers" style={{ margin: '4rem 0' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '2px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '2rem' }}>
           <div>
@@ -334,7 +330,6 @@ export default function Home({ user, onAddToCart }) {
         </div>
       </section>
 
-      {/* 4. Recommendations section (hides AI text) */}
       {aiRecs.length > 0 && (
         <section className="ai-carousel-container" style={{ marginBottom: '4rem' }}>
           <h3 style={{ fontSize: '1.6rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -353,8 +348,7 @@ export default function Home({ user, onAddToCart }) {
                     <span className="text-accent" style={{ fontWeight: '800' }}>₹{item.price}</span>
                   </div>
                   <p style={{ fontSize: '0.8rem', flex: 1, marginTop: '5px' }}>{item.description}</p>
-                  
-                  {/* Heuristic reason */}
+
                   <div className="ai-reason-bubble">
                     <Sparkles size={14} style={{ flexShrink: 0, marginTop: '2px', color: 'var(--accent-color)' }} />
                     <span>{user ? item.ai_reason : "A signature premium bake crafted with French techniques."}</span>
@@ -374,7 +368,6 @@ export default function Home({ user, onAddToCart }) {
         </section>
       )}
 
-      {/* 5. Gifting Specials Slider (Screenshot 3 alignment) */}
       <section id="gifting-specials" className="gifting-specials-section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '1rem', marginBottom: '2.5rem' }}>
           <div>
@@ -424,7 +417,6 @@ export default function Home({ user, onAddToCart }) {
         </div>
       </section>
 
-      {/* 6. Bulk Orders Section (Screenshot 4 alignment) */}
       <section id="bulk-orders" style={{ 
         margin: '4rem 0', 
         height: '320px', 
@@ -449,7 +441,6 @@ export default function Home({ user, onAddToCart }) {
         </button>
       </section>
 
-      {/* Live Oven Video loop */}
       <section style={{ margin: '4rem 0' }}>
         <div style={{
           display: 'grid',
@@ -602,9 +593,8 @@ export default function Home({ user, onAddToCart }) {
         )}
       </section>
 
-      {/* 8. Story Section (Screenshot 5 alignment) */}
       <section id="story-section" className="grid grid-3" style={{ margin: '5rem 0' }}>
-        {/* Col 1: About Us Text */}
+        
         <div className="story-col-light" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <h4 style={{ fontSize: '1.8rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--accent-color)' }}>
             The Dumbake Story
@@ -617,12 +607,10 @@ export default function Home({ user, onAddToCart }) {
           </a>
         </div>
 
-        {/* Col 2: Cupcake Image */}
         <div className="card" style={{ border: 'none', borderRadius: 'var(--border-radius-lg)', overflow: 'hidden', height: '100%', minHeight: '300px' }}>
           <img src="/dumbake_cupcakes.png" alt="Dumbake Team" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
 
-        {/* Col 3: Owner Quote */}
         <div className="story-col-dark" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#ffffff' }}>
           <h4 style={{ fontSize: '1.8rem', fontWeight: '800', marginBottom: '1.25rem' }}>
             Meet the Maker – Ishika
@@ -636,7 +624,6 @@ export default function Home({ user, onAddToCart }) {
         </div>
       </section>
 
-      {/* Instagram Feed Section */}
       <section className="instagram-section">
         <div className="instagram-header">
           <div>
@@ -682,7 +669,6 @@ export default function Home({ user, onAddToCart }) {
         </div>
       </section>
 
-      {/* 9. Reviews Section */}
       <section style={{ margin: '5rem 0', display: 'grid', gap: '30px' }} className="grid-2">
         <div>
           <h3 style={{ fontSize: '1.8rem', fontWeight: '800', marginBottom: '1.5rem' }}>Ranchi Flavour Logs</h3>
@@ -799,7 +785,6 @@ export default function Home({ user, onAddToCart }) {
           )}
         </div>
 
-        {/* Post Review card */}
         <div className="card" style={{ padding: '2rem', height: 'fit-content' }}>
           <h3 style={{ fontSize: '1.5rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <MessageSquarePlus size={20} style={{ color: 'var(--accent-color)' }} />
@@ -886,7 +871,6 @@ export default function Home({ user, onAddToCart }) {
         </div>
       </section>
 
-      {/* Floating WhatsApp Widget */}
       <a 
         id="whatsapp-custom"
         href="https://wa.me/919999988888?text=Hello%20Dumbake!%20I%20would%20like%20to%20order%20a%20custom%20celebration%20cake." 
@@ -899,7 +883,6 @@ export default function Home({ user, onAddToCart }) {
         </svg>
       </a>
 
-      {/* Product Customize Modal */}
       {selectedItem && createPortal(
         <div className="dialog-overlay" onClick={() => setSelectedItem(null)}>
           <div className="dialog-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
@@ -919,7 +902,6 @@ export default function Home({ user, onAddToCart }) {
               </div>
             </div>
 
-            {/* Customization Options */}
             {selectedItem.category === 'Cakes' && (
               <>
                 <div className="form-group">
@@ -1005,7 +987,6 @@ export default function Home({ user, onAddToCart }) {
         document.body
       )}
 
-      {/* Bulk Order Enquiry Modal */}
       {isBulkModalOpen && createPortal(
         <div className="dialog-overlay" onClick={() => { setIsBulkModalOpen(false); setBulkSuccess(false); }}>
           <div className="dialog-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>

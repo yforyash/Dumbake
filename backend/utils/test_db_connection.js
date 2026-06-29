@@ -8,7 +8,7 @@ async function testConnection() {
 
   if (databaseUrl) {
     console.log('DATABASE_URL is set. Testing cloud database connection...');
-    console.log('Database URL configured:', databaseUrl.replace(/:[^:@]+@/, ':****@')); // Hide password
+    console.log('Database URL configured:', databaseUrl.replace(/:[^:@]+@/, ':****@')); 
     pool = new Pool({
       connectionString: databaseUrl,
       ssl: databaseUrl.includes('supabase') || databaseUrl.includes('neon') || process.env.NODE_ENV === 'production'
@@ -34,7 +34,6 @@ async function testConnection() {
     console.log('Current Database Time:', res.rows[0].now);
     console.log('PostgreSQL Version:', res.rows[0].version);
 
-    // List all tables
     const tableRes = await pool.query(`
       SELECT table_name 
       FROM information_schema.tables 

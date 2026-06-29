@@ -1,7 +1,6 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-// Create the transporter using SMTP environment variables
 function getTransporter() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
@@ -14,7 +13,7 @@ function getTransporter() {
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
+    secure: process.env.SMTP_PORT === '465', 
     auth: {
       user: user,
       pass: pass
@@ -22,7 +21,6 @@ function getTransporter() {
   });
 }
 
-// 1. Send OTP Verification Email
 async function sendVerificationEmail(email, code) {
   const transporter = getTransporter();
   const from = process.env.SMTP_FROM || '"Dumbake Support" <support@dumbake.com>';
@@ -63,7 +61,6 @@ async function sendVerificationEmail(email, code) {
   }
 }
 
-// 2. Send Bulk Order Enquiry Confirmation Email
 async function sendBulkEnquiryEmail(email, name, quantity, eventDate) {
   const transporter = getTransporter();
   const from = process.env.SMTP_FROM || '"Dumbake Support" <support@dumbake.com>';
@@ -101,7 +98,6 @@ async function sendBulkEnquiryEmail(email, name, quantity, eventDate) {
   }
 }
 
-// 3. Send Newsletter Subscription Confirmation Email
 async function sendNewsletterSubscriptionEmail(email) {
   const transporter = getTransporter();
   const from = process.env.SMTP_FROM || '"Dumbake Support" <support@dumbake.com>';

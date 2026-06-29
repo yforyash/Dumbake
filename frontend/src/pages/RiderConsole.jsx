@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSelector } from 'react-redux';
 import { fetchOrders, updateRiderLocation, updateRiderStatus } from '../services/api';
 import { Loader, ShieldCheck, MapPin, CheckCircle, Navigation, Phone, User, Play, Square } from 'lucide-react';
 
-export default function RiderConsole({ user }) {
+export default function RiderConsole() {
+  const user = useSelector((state) => state.auth.user);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
   const [activeTrackingId, setActiveTrackingId] = useState(null);
-  const [trackingMode, setTrackingMode] = useState('none'); // 'none' | 'gps' | 'simulation'
+  const [trackingMode, setTrackingMode] = useState('none'); 
   const [currentCoords, setCurrentCoords] = useState(null);
   const [simStep, setSimStep] = useState(0);
 
@@ -19,7 +21,7 @@ export default function RiderConsole({ user }) {
     try {
       setLoading(true);
       const data = await fetchOrders();
-      // Only display delivery orders (skip store pickups)
+      
       const deliveryOrders = data.filter(o => o.delivery_type === 'Delivery');
       setOrders(deliveryOrders);
     } catch (err) {
@@ -51,7 +53,6 @@ export default function RiderConsole({ user }) {
     setSimStep(0);
   };
 
-  // 1. Live Geolocation Watcher
   const startGpsTracking = (order) => {
     stopTracking();
     if (!navigator.geolocation) {
@@ -84,7 +85,6 @@ export default function RiderConsole({ user }) {
     );
   };
 
-  // 2. Simulated coordinate movement loop
   const startSimulationTracking = (order) => {
     stopTracking();
     setActiveTrackingId(order.id);
@@ -121,7 +121,7 @@ export default function RiderConsole({ user }) {
         simIntervalRef.current = null;
         alert("Simulation Complete! Rider has reached customer's address.");
       }
-    }, 5000); // Update coordinates every 5 seconds
+    }, 5000); 
   };
 
   const handleStartDelivery = async (order, modeType) => {
@@ -213,8 +213,7 @@ export default function RiderConsole({ user }) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-          
-          {/* Section: Dispatched Deliveries */}
+
           <div>
             <h3 style={{ fontSize: '1.3rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
               🏍️ Ongoing Deliveries ({dispatchedOrders.length})
@@ -282,7 +281,6 @@ export default function RiderConsole({ user }) {
             )}
           </div>
 
-          {/* Section: Ready for Pickup */}
           <div>
             <h3 style={{ fontSize: '1.3rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
               🥣 Ready at Bakery ({readyOrders.length})
@@ -333,7 +331,6 @@ export default function RiderConsole({ user }) {
             )}
           </div>
 
-          {/* Section: Past Deliveries */}
           <div>
             <h3 style={{ fontSize: '1.3rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
               ✓ Completed Deliveries ({pastOrders.length})

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { fetchOrders } from '../services/api';
 import { ShoppingBag, Calendar } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
@@ -31,7 +32,6 @@ function DeliveryTrackingMap({ order }) {
   const customer = [parseFloat(order.latitude), parseFloat(order.longitude)];
   const [progress, setProgress] = useState(0);
 
-  // Fallback visual simulation loop if coordinates aren't updated by rider Console
   useEffect(() => {
     if (order.status !== 'Dispatched') {
       setProgress(0);
@@ -104,7 +104,6 @@ function DeliveryTrackingMap({ order }) {
         </div>
       </div>
 
-      {/* Delivery boy info */}
       <div style={{
         padding: '1.25rem',
         borderRadius: '16px',
@@ -166,8 +165,9 @@ function DeliveryTrackingMap({ order }) {
   );
 }
 
-export default function OrderHistory({ user }) {
+export default function OrderHistory() {
   const navigate = useNavigate();
+  const user = useSelector((state) => state.auth.user);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -178,7 +178,6 @@ export default function OrderHistory({ user }) {
     }
     loadOrders();
 
-    // Set up silent polling every 6 seconds if there are active bakes
     const interval = setInterval(async () => {
       try {
         const data = await fetchOrders();
@@ -229,7 +228,7 @@ export default function OrderHistory({ user }) {
     const step = getStepActive(order.status);
     return (
       <div key={order.id} className="card" style={{ padding: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
-        {/* Header info */}
+        
         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontWeight: '800', fontSize: '1.1rem', color: 'var(--accent-color)' }}>Order #{order.id}</span>
@@ -240,7 +239,6 @@ export default function OrderHistory({ user }) {
           <span className={`status-pill status-${order.status.toLowerCase()}`}>{order.status}</span>
         </div>
 
-        {/* Items and total */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem', marginBottom: '1.5rem' }} className="grid-2">
           <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
             <h4 style={{ fontSize: '0.9rem', marginBottom: '8px', color: 'var(--text-color)' }}>Items Summary</h4>
@@ -268,16 +266,14 @@ export default function OrderHistory({ user }) {
           </div>
         </div>
 
-        {/* Tracking Progress Bar */}
         {order.status !== 'Cancelled' && (
           <div>
             <h4 style={{ fontSize: '0.85rem', marginBottom: '10px', color: 'var(--text-muted)' }}>Preparation & Delivery Progress</h4>
             <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', marginTop: '20px' }}>
-              {/* Connection Line */}
+              
               <div style={{ position: 'absolute', top: '8px', left: '0', width: '100%', height: '3px', background: '#EEE', zIndex: '1' }}></div>
               <div style={{ position: 'absolute', top: '8px', left: '0', width: `${((step - 1) / 3) * 100}%`, height: '3px', background: 'var(--accent-color)', zIndex: '2', transition: 'width 0.4s ease' }}></div>
 
-              {/* Stepper Steps */}
               {['Placed', 'Preparing', 'Dispatched', 'Delivered'].map((label, idx) => {
                 const active = step >= idx + 1;
                 return (
@@ -326,8 +322,7 @@ export default function OrderHistory({ user }) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-          
-          {/* Ongoing / Active Orders */}
+
           <div>
             <h3 style={{ 
               fontSize: '1.3rem', 
@@ -375,7 +370,6 @@ export default function OrderHistory({ user }) {
             )}
           </div>
 
-          {/* Past / Completed Orders */}
           {pastOrders.length > 0 && (
             <div>
               <h3 style={{ 

@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { MapPin, ShieldCheck, CreditCard, DollarSign, Smartphone, Loader, CheckCircle, AlertTriangle } from 'lucide-react';
-import { postOrder, createStripePaymentIntent, createRazorpayOrder, verifyRazorpayPayment } from '../services/api';
+import { postOrder, createStripePaymentIntent, createRazorpayOrder, verifyRazorpayPayment, fetchProfile } from '../services/api';
 import { loadStripeScript, loadRazorpayScript } from '../utils/payment_loader';
+import { setUser } from '../store/slices/authSlice';
+import { clearCart } from '../store/slices/cartSlice';
+import { setAddressOpen } from '../store/slices/addressSlice';
 import confetti from 'canvas-confetti';
 
-// Helper: Luhn Algorithm Validation for Card Numbers
 const validateLuhn = (cardNumberStr) => {
   const cleanVal = cardNumberStr.replace(/\s/g, '');
   if (!/^\d{13,19}$/.test(cleanVal)) return false;
@@ -23,7 +26,6 @@ const validateLuhn = (cardNumberStr) => {
   return sum % 10 === 0;
 };
 
-// Helper: Verify Expiry Date is Future MM/YY
 const validateExpiry = (expiryStr) => {
   if (!/^\d{2}\/\d{2}$/.test(expiryStr)) return false;
   const parts = expiryStr.split('/');
@@ -32,7 +34,7 @@ const validateExpiry = (expiryStr) => {
   if (month < 1 || month > 12) return false;
   
   const now = new Date();
-  const currentMonth = now.getMonth() + 1; // 1-indexed
+  const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
   
   if (year < currentYear) return false;
@@ -40,14 +42,19 @@ const validateExpiry = (expiryStr) => {
   return true;
 };
 
-// Helper: Validate UPI ID Format
 const validateUpi = (upiStr) => {
   const upiRegex = /^[\w.-]+@[\w.-]+$/;
   return upiRegex.test(upiStr.trim());
 };
 
-export default function Checkout({ user, cartItems, onClearCart, activeAddress, onAddressClick }) {
+export default function Checkout() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  const user = useSelector((state) => state.auth.user);
+  const cartItems = useSelector((state) => state.cart.cartItems);
+  const activeAddress = useSelector((state) => state.address.activeAddress);
+
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -63,11 +70,10 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
   const [cardCvv, setCardCvv] = useState('');
   const [upiId, setUpiId] = useState('');
 
-  // Payment overlay modal state
   const [paymentModal, setPaymentModal] = useState({
     isOpen: false,
-    state: 'idle', // 'idle' | 'loading' | 'otp_required' | 'success' | 'failed'
-    gateway: '', // 'Stripe' | 'Razorpay'
+    state: 'idle',
+    gateway: '',
     message: '',
     otpInput: '',
     error: ''
@@ -158,15 +164,14 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
             setError(`Destination is ${distanceKm} km away. We only deliver within 15 km of Ranchi Bakery!`);
           } else {
             setOutOfBounds(false);
-            const calculatedFee = Math.max(30, Math.round(distanceKm * 10)); // ₹10 per km, min ₹30
+            const calculatedFee = Math.max(30, Math.round(distanceKm * 10));
             setDeliveryFee(calculatedFee);
           }
         } else {
           throw new Error('No driving route found to this address.');
         }
       } catch (err) {
-        console.error('[OSRM Route Error]', err);
-        // Fallback flat fee if offline
+        console.error(err);
         setDeliveryDistance(5.0);
         setDeliveryFee(50);
         setOutOfBounds(false);
@@ -188,7 +193,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
   const walletUsed = payWithWallet ? Math.min(walletBalance, discountedGrandTotal) : 0;
   const remainingPayable = parseFloat((discountedGrandTotal - walletUsed).toFixed(2));
 
-  // Validations prior to payment gateway processing
   const validateCardDetails = () => {
     const rawCardNum = cardNumber.replace(/\s/g, '');
     if (rawCardNum.length !== 16) {
@@ -217,7 +221,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
     return null;
   };
 
-  // Final API call to register the order in backend
   const executeFinalizeOrder = async (transactionId, forcedPaymentStatus) => {
     const finalAddress = deliveryType === 'Delivery' && activeAddress
       ? `${activeAddress.address_line} | Scheduled: ${deliveryDate} (${deliveryTimeSlot})`
@@ -253,7 +256,14 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
 
     await postOrder(orderPayload);
     setSuccess(true);
-    onClearCart();
+    dispatch(clearCart());
+    
+    try {
+      const profile = await fetchProfile();
+      dispatch(setUser(profile));
+    } catch (e) {
+      console.error(e);
+    }
     
     confetti({
       particleCount: 150,
@@ -290,7 +300,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
 
     const currentPayable = remainingPayable;
 
-    // Pre-validations
     if (currentPayable > 0) {
       if (paymentMethod === 'Card') {
         const cardErr = validateCardDetails();
@@ -307,7 +316,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
       }
     }
 
-    // Wallet fully paid or COD goes straight to finalize
     if (currentPayable === 0 || paymentMethod === 'COD') {
       setLoading(true);
       try {
@@ -320,7 +328,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
       return;
     }
 
-    // Stripe Credit Card Flow
     if (paymentMethod === 'Card') {
       setPaymentModal({
         isOpen: true,
@@ -335,7 +342,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
         const intentRes = await createStripePaymentIntent(currentPayable);
         
         if (intentRes.isMock) {
-          // Simulation flow
           setTimeout(() => {
             setPaymentModal(prev => ({
               ...prev,
@@ -344,7 +350,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
             }));
           }, 2000);
         } else {
-          // Live Stripe Client Integration
           const scriptLoaded = await loadStripeScript();
           if (!scriptLoaded) throw new Error('Stripe JS SDK failed to load.');
 
@@ -353,7 +358,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
             message: 'Stripe API Session handshaked. Confirming test card token verification...'
           }));
 
-          // Confirm card credentials simulation with live gateway intent
           setTimeout(() => {
             setPaymentModal(prev => ({
               ...prev,
@@ -371,7 +375,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
       }
     }
 
-    // Razorpay UPI Flow
     if (paymentMethod === 'UPI') {
       setPaymentModal({
         isOpen: true,
@@ -386,7 +389,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
         const rzpOrder = await createRazorpayOrder(currentPayable);
         
         if (rzpOrder.isMock) {
-          // Simulation flow
           setTimeout(() => {
             setPaymentModal(prev => ({
               ...prev,
@@ -395,11 +397,10 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
             }));
           }, 2000);
         } else {
-          // Live Razorpay Client overlay
           const scriptLoaded = await loadRazorpayScript();
           if (!scriptLoaded) throw new Error('Razorpay SDK failed to load.');
 
-          setPaymentModal(prev => ({ ...prev, isOpen: false })); // Hide loading modal
+          setPaymentModal(prev => ({ ...prev, isOpen: false }));
 
           const options = {
             key: rzpOrder.keyId,
@@ -543,9 +544,7 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
       ) : (
         <form onSubmit={handleSubmitOrder} style={{ display: 'grid', gap: '2.5rem' }} className="grid-2">
           
-          {/* Left Column: Form Details */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {/* Delivery vs Pickup Selector */}
             <div className="card" style={{ padding: '1.5rem' }}>
               <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Fulfillment Option</h3>
               <div style={{ display: 'flex', gap: '15px' }}>
@@ -568,7 +567,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
               </div>
             </div>
 
-            {/* Customer Information */}
             <div className="card" style={{ padding: '1.5rem' }}>
               <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Delivery Information</h3>
               
@@ -659,7 +657,7 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
                       </div>
                       <button 
                         type="button"
-                        onClick={onAddressClick}
+                        onClick={() => dispatch(setAddressOpen(true))}
                         style={{
                           background: 'none',
                           border: 'none',
@@ -690,7 +688,7 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
                       </p>
                       <button 
                         type="button"
-                        onClick={onAddressClick}
+                        onClick={() => dispatch(setAddressOpen(true))}
                         style={{
                           padding: '8px 16px',
                           borderRadius: '12px',
@@ -710,7 +708,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
               )}
             </div>
 
-            {/* Payment Integration */}
             <div className="card" style={{ padding: '1.5rem' }}>
               <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <ShieldCheck size={20} style={{ color: '#1A8245' }} /> Secure Payment Gateways
@@ -788,7 +785,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
                 )
               )}
 
-              {/* Card Inputs */}
               {remainingPayable > 0 && paymentMethod === 'Card' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '1.5rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
@@ -827,7 +823,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
                 </div>
               )}
 
-              {/* UPI Inputs */}
               {remainingPayable > 0 && paymentMethod === 'UPI' && (
                 <div className="form-group" style={{ margin: 0, marginTop: '1.5rem' }}>
                   <label className="form-label">Virtual Payment Address (VPA / UPI ID)</label>
@@ -849,7 +844,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
             </div>
           </div>
 
-          {/* Right Column: Order Summary */}
           <div className="card" style={{ padding: '2rem', height: 'fit-content' }}>
             <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', fontFamily: 'var(--font-serif)' }}>Basket Summary</h3>
             
@@ -921,7 +915,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
         </form>
       )}
 
-      {/* Payment Processing Overlay Modal */}
       {paymentModal.isOpen && (
         <div style={{
           position: 'fixed',
@@ -996,7 +989,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
                 </p>
 
                 {paymentModal.gateway === 'Razorpay' ? (
-                  // Mock UPI App Push confirmation
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <div style={{ fontSize: '0.8rem', background: 'var(--primary-light)', padding: '8px 16px', borderRadius: '20px', color: 'var(--accent-color)', fontWeight: '700' }}>
                       Pushed Request to: {upiId}
@@ -1014,7 +1006,6 @@ export default function Checkout({ user, cartItems, onClearCart, activeAddress, 
                     </button>
                   </div>
                 ) : (
-                  // Mock Card OTP code input
                   <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                     <label className="form-label">Enter 3D-Secure 6-Digit OTP</label>
                     <input

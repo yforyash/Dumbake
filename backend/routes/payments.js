@@ -31,7 +31,6 @@ try {
   console.warn('[Payments] Razorpay library failed to load or keys invalid:', err.message);
 }
 
-// 1. Stripe: Create Payment Intent
 router.post('/stripe/create-intent', authenticate, async (req, res) => {
   try {
     const { amount } = req.body;
@@ -41,7 +40,7 @@ router.post('/stripe/create-intent', authenticate, async (req, res) => {
 
     if (stripe) {
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(amount * 100), // amount in paisa/cents
+        amount: Math.round(amount * 100), 
         currency: 'inr',
         payment_method_types: ['card'],
       });
@@ -51,7 +50,7 @@ router.post('/stripe/create-intent', authenticate, async (req, res) => {
         id: paymentIntent.id
       });
     } else {
-      // Sandbox fallback mode
+      
       const mockSecret = `mock_stripe_secret_${crypto.randomBytes(16).toString('hex')}`;
       const mockId = `mock_pi_${crypto.randomBytes(8).toString('hex')}`;
       return res.json({
@@ -66,7 +65,6 @@ router.post('/stripe/create-intent', authenticate, async (req, res) => {
   }
 });
 
-// 2. Razorpay: Create Order ID
 router.post('/razorpay/create-order', authenticate, async (req, res) => {
   try {
     const { amount } = req.body;
@@ -91,7 +89,7 @@ router.post('/razorpay/create-order', authenticate, async (req, res) => {
         isMock: false
       });
     } else {
-      // Sandbox fallback mode
+      
       const mockOrderId = `mock_rzp_order_${crypto.randomBytes(8).toString('hex')}`;
       return res.json({
         orderId: mockOrderId,
@@ -107,7 +105,6 @@ router.post('/razorpay/create-order', authenticate, async (req, res) => {
   }
 });
 
-// 3. Razorpay: Verify signature
 router.post('/razorpay/verify', authenticate, async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
@@ -116,7 +113,6 @@ router.post('/razorpay/verify', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Missing required validation properties.' });
     }
 
-    // Check if it was a simulated transaction
     if (razorpay_order_id.startsWith('mock_') || !razorpay) {
       console.log(`[Payments] Verifying mock Razorpay transaction: ${razorpay_order_id}`);
       return res.json({ status: 'success', isMock: true });
@@ -126,7 +122,6 @@ router.post('/razorpay/verify', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Missing signature.' });
     }
 
-    // Live validation
     const text = razorpay_order_id + '|' + razorpay_payment_id;
     const generated_signature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)

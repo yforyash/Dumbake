@@ -3,7 +3,6 @@ const router = express.Router();
 const { query } = require('../config/db');
 const { authenticate } = require('../middlewares/auth');
 
-// Get all reviews (capped to latest 1000 for display/aggregation)
 router.get('/', async (req, res) => {
   try {
     const result = await query(`
@@ -19,7 +18,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Post review (Authenticated only)
 router.post('/', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;

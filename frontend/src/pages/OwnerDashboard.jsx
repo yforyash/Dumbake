@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { fetchOrders, fetchItems, updateOrderStatus, updateBakeryItem } from '../services/api';
 import { Clock, Save, Layers, Volume2, VolumeX, Search, Play, CheckCircle2, ChevronRight, XCircle } from 'lucide-react';
 
-export default function OwnerDashboard({ user }) {
+export default function OwnerDashboard() {
   const navigate = useNavigate();
+  const user = useSelector((state) => state.auth.user);
   const [orders, setOrders] = useState([]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);

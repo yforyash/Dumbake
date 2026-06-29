@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { Formik, Form, Field } from 'formik';
 import CryptoJS from 'crypto-js';
-import { ShieldAlert, CheckCircle2, Lock, Mail, User } from 'lucide-react';
+import { ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { loginUser, registerUser, forgotPassword, resetPassword, verifyEmail } from '../services/api';
+import { setUser } from '../store/slices/authSlice';
 
-export default function Auth({ onLoginSuccess, cartItems = [] }) {
+export default function Auth() {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
+
+  const cartItems = useSelector((state) => state.cart.cartItems);
+
   const [mode, setMode] = useState('login');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -25,7 +31,7 @@ export default function Auth({ onLoginSuccess, cartItems = [] }) {
     window.scrollTo(0, 0);
   }, [mode]);
 
-  const hash = p => CryptoJS.SHA256(p).toString(CryptoJS.enc.Hex);
+  const hash = (p) => CryptoJS.SHA256(p).toString(CryptoJS.enc.Hex);
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', minHeight: '80vh', alignItems: 'center', padding: '1rem' }}>
@@ -55,12 +61,11 @@ export default function Auth({ onLoginSuccess, cartItems = [] }) {
               onSubmit={async (values, { setSubmitting }) => {
                 setError('');
                 try {
-                  const user = await loginUser(values.email, hash(values.password));
-                  localStorage.setItem('dumbake_user', JSON.stringify(user));
-                  onLoginSuccess(user);
+                  const loggedInUser = await loginUser(values.email, hash(values.password));
+                  localStorage.setItem('dumbake_user', JSON.stringify(loggedInUser));
+                  dispatch(setUser(loggedInUser));
                   
-                  // Redirect according to role (only admin or user)
-                  if (user.role === 'admin') {
+                  if (loggedInUser.role === 'admin') {
                     navigate('/admin-dashboard');
                   } else if (cartItems.length > 0) {
                     navigate('/checkout');
@@ -139,7 +144,7 @@ export default function Auth({ onLoginSuccess, cartItems = [] }) {
                 }
 
                 try {
-                  const res = await registerUser(values.name, values.email, hash(values.password), 'user', values.phone);
+                  await registerUser(values.name, values.email, hash(values.password), 'user', values.phone);
                   setRegisteredEmail(values.email);
                   setSuccess('Registration successful! Please enter the 6-digit verification code.');
                   setMode('verify');
@@ -278,7 +283,7 @@ export default function Auth({ onLoginSuccess, cartItems = [] }) {
                   setSuccess('Email verified successfully!');
                   if (response.user) {
                     localStorage.setItem('dumbake_user', JSON.stringify(response.user));
-                    onLoginSuccess(response.user);
+                    dispatch(setUser(response.user));
                     navigate('/');
                   } else {
                     setMode('login');

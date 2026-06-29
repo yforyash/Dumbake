@@ -5,7 +5,6 @@ const { query } = require('../config/db');
 const { authenticate } = require('../middlewares/auth');
 const { sendVerificationCode, sendNewsletterWelcome } = require('../utils/notifications');
 
-// Register user
 router.post('/register', async (req, res) => {
   try {
     const { name, email, passwordHash, phone } = req.body;
@@ -13,7 +12,6 @@ router.post('/register', async (req, res) => {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@dumbake.com';
     const role = (email.toLowerCase() === adminEmail.toLowerCase()) ? 'admin' : 'user';
 
-    // Check if user already exists
     const exists = await query('SELECT id, is_verified FROM users WHERE email = $1', [email]);
     if (exists.rows.length > 0) {
       const existingUser = exists.rows[0];
@@ -35,10 +33,8 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // Generate 6-digit verification code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Default balance is 1000.00
     const result = await query(
       `INSERT INTO users (name, email, password_hash, role, wallet_balance, is_verified, verification_code, phone)
        VALUES ($1, $2, $3, $4, 1000.00, FALSE, $5, $6)
@@ -46,7 +42,6 @@ router.post('/register', async (req, res) => {
       [name, email, passwordHash, role, code, phone || null]
     );
 
-    // Send verification code (email + SMS if phone is provided)
     await sendVerificationCode(email, phone || null, code);
 
     res.status(201).json({
@@ -57,7 +52,6 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Verify email
 router.post('/verify', async (req, res) => {
   try {
     const { email, code } = req.body;
@@ -69,17 +63,9 @@ router.post('/verify', async (req, res) => {
     const isMock = !pool;
 
     if (isMock) {
-      // In serverless mock sandbox fallback, auto-create the user if missing due to container reset
-      const { mockState } = require('../config/db'); // wait, let's check if db.js exports mockState
-      // Let's import mockState if needed, or we can just access it. Let's make sure db.js exports it or we can resolve it.
-      // Wait, let's look at db.js exports: module.exports = { pool, query };
-      // Ah! db.js does not export mockState!
-      // Let's see: we can query the database or check db.js.
-      // Wait! Since query() handles everything in db.js, we can just run queries!
-      // In db.js, query('SELECT ...') returns rows from mockState.users.
-      // And query('UPDATE users ...') updates mockState.users!
-      // So we can just run query() commands to select and update, and it will automatically handle it!
-      // This is much cleaner!
+      
+      const { mockState } = require('../config/db'); 
+
     }
 
     const result = await query('SELECT id, name, email, role, wallet_balance, verification_code FROM users WHERE email = $1', [email]);
@@ -110,7 +96,6 @@ router.post('/verify', async (req, res) => {
   }
 });
 
-// Login user
 router.post('/login', async (req, res) => {
   try {
     const { email, passwordHash } = req.body;
@@ -155,7 +140,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Forgot Password
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -166,19 +150,18 @@ router.post('/forgot-password', async (req, res) => {
     }
 
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 3600000); // 1 hour
+    const expiresAt = new Date(Date.now() + 3600000); 
 
     await query(
       `INSERT INTO password_resets (email, token, expires_at)
        VALUES ($1, $2, $3)
-       ON CONFLICT DO NOTHING`, // simplified, delete old resets would be cleaner but this works
+       ON CONFLICT DO NOTHING`, 
       [email, token, expiresAt]
     );
     
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const resetLink = `${frontendUrl}/login?token=${token}&email=${encodeURIComponent(email)}`;
-    
-    // Simulate sending email: return resetLink directly for testing!
+
     res.json({ 
       message: 'Password reset link generated successfully.',
       link: resetLink 
@@ -188,12 +171,10 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-// Reset Password
 router.post('/reset-password', async (req, res) => {
   try {
     const { email, token, newPasswordHash } = req.body;
-    
-    // Check if token exists and is valid
+
     const resetResult = await query(
       'SELECT id FROM password_resets WHERE email = $1 AND token = $2 AND expires_at > NOW()',
       [email, token]
@@ -203,10 +184,8 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'Expired or invalid token' });
     }
 
-    // Update password
     await query('UPDATE users SET password_hash = $1 WHERE email = $2', [newPasswordHash, email]);
-    
-    // Delete password reset token
+
     await query('DELETE FROM password_resets WHERE email = $1', [email]);
     
     res.json({ message: 'Password updated successfully' });
@@ -215,7 +194,6 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-// Get user profile
 router.get('/profile', authenticate, async (req, res) => {
   if (req.user.role === 'anonymous') {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -232,7 +210,6 @@ router.get('/profile', authenticate, async (req, res) => {
   }
 });
 
-// Newsletter subscription
 router.post('/subscribe', async (req, res) => {
   try {
     const { email } = req.body;
@@ -245,7 +222,6 @@ router.post('/subscribe', async (req, res) => {
       [email]
     );
 
-    // Send newsletter subscription confirmation email
     await sendNewsletterSubscriptionEmail(email);
 
     res.status(201).json({ message: 'Subscribed successfully' });
@@ -254,7 +230,6 @@ router.post('/subscribe', async (req, res) => {
   }
 });
 
-// Send/Resend OTP (API-based OTP generation)
 router.post('/send-otp', async (req, res) => {
   try {
     const { email } = req.body;
@@ -269,7 +244,6 @@ router.post('/send-otp', async (req, res) => {
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Check if user exists
     const exists = await query('SELECT id FROM users WHERE email = $1', [email]);
     
     if (exists.rows.length > 0) {
@@ -285,8 +259,7 @@ router.post('/send-otp', async (req, res) => {
       );
     }
 
-    // Send the verification OTP email
-    await sendVerificationEmail(email, code);
+    await sendVerificationCode(email, null, code);
 
     res.json({ message: 'Verification OTP sent successfully to ' + email });
   } catch (err) {

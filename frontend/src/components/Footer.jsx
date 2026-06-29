@@ -25,8 +25,7 @@ export default function Footer() {
   return (
     <footer className="main-footer">
       <div className="footer-container">
-        
-        {/* Row 1: Newsletter Subscription */}
+
         <div className="footer-newsletter-row">
           <div className="newsletter-text">
             <h4>Subscribe to Our Newsletter</h4>
@@ -56,10 +55,8 @@ export default function Footer() {
 
         <hr className="footer-divider" />
 
-        {/* Row 2: Columns Grid */}
         <div className="footer-grid">
-          
-          {/* Column 1: Information */}
+
           <div className="footer-col info-col">
             <h5>Information</h5>
             <p className="info-text">
@@ -96,7 +93,6 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Column 2: Menu */}
           <div className="footer-col">
             <h5>Menu</h5>
             <ul className="footer-links">
@@ -107,7 +103,6 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Column 3: Legal */}
           <div className="footer-col">
             <h5>Legal</h5>
             <ul className="footer-links">
@@ -119,7 +114,6 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Column 4: Links */}
           <div className="footer-col">
             <h5>Quick Links</h5>
             <ul className="footer-links">
@@ -133,7 +127,6 @@ export default function Footer() {
 
         <hr className="footer-divider" />
 
-        {/* Row 3: Copyright */}
         <div className="footer-copyright-row">
           <p className="copyright-text">
             Copyright © 2026 dumbake. Powered by Shopify

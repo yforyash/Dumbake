@@ -3,7 +3,6 @@ const router = express.Router();
 const { query } = require('../config/db');
 const { authenticate, requireRole } = require('../middlewares/auth');
 
-// Get all bakery items (with filters)
 router.get('/', async (req, res) => {
   try {
     const { category, search, eggless } = req.query;
@@ -35,7 +34,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get single bakery item details
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -49,12 +47,10 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Add bakery item (Admin only)
 router.post('/', authenticate, requireRole(['admin']), async (req, res) => {
   try {
     const { name, description, price, category, image_url, is_eggless, is_bestseller, stock_quantity } = req.body;
-    
-    // Check if name exists
+
     const exists = await query('SELECT id FROM bakery_items WHERE name = $1', [name]);
     if (exists.rows.length > 0) {
       return res.status(400).json({ error: 'Bakery item with this name already exists' });
@@ -72,13 +68,11 @@ router.post('/', authenticate, requireRole(['admin']), async (req, res) => {
   }
 });
 
-// Update bakery item (Admin only)
 router.put('/:id', authenticate, requireRole(['admin']), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, price, category, image_url, is_eggless, is_bestseller, stock_quantity, status } = req.body;
 
-    // Check if item exists
     const check = await query('SELECT id FROM bakery_items WHERE id = $1', [parseInt(id)]);
     if (check.rows.length === 0) {
       return res.status(404).json({ error: 'Bakery item not found' });
@@ -106,7 +100,6 @@ router.put('/:id', authenticate, requireRole(['admin']), async (req, res) => {
   }
 });
 
-// Delete bakery item (Admin only)
 router.delete('/:id', authenticate, requireRole(['admin']), async (req, res) => {
   try {
     const { id } = req.params;

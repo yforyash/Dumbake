@@ -1,28 +1,38 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { X, Plus, Minus, ShoppingCart } from 'lucide-react';
+import { setCartOpen, updateCartQuantity } from '../store/slices/cartSlice';
 
-export default function CartModal({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) {
+export default function CartModal() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  const isOpen = useSelector((state) => state.cart.isCartOpen);
+  const cartItems = useSelector((state) => state.cart.cartItems);
 
   if (!isOpen) return null;
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
   const handleCheckoutClick = () => {
-    onClose();
+    dispatch(setCartOpen(false));
     navigate('/checkout');
   };
 
+  const handleClose = () => {
+    dispatch(setCartOpen(false));
+  };
+
   return (
-    <div className="cart-overlay" onClick={onClose}>
+    <div className="cart-overlay" onClick={handleClose}>
       <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
         <div className="cart-header">
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ShoppingCart size={20} style={{ color: 'var(--accent-color)' }} />
             Your Basket
           </h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-color)' }}>
+          <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-color)' }}>
             <X size={24} />
           </button>
         </div>
@@ -54,11 +64,11 @@ export default function CartModal({ isOpen, onClose, cartItems, onUpdateQuantity
                   <p style={{ fontWeight: '700', color: 'var(--text-color)' }}>₹{item.price}</p>
                 </div>
                 <div className="quantity-controls">
-                  <button onClick={() => onUpdateQuantity(item.cartKey, item.quantity - 1)} className="quantity-btn">
+                  <button onClick={() => dispatch(updateCartQuantity({ cartKey: item.cartKey, quantity: item.quantity - 1 }))} className="quantity-btn">
                     <Minus size={12} />
                   </button>
                   <span className="quantity-count">{item.quantity}</span>
-                  <button onClick={() => onUpdateQuantity(item.cartKey, item.quantity + 1)} className="quantity-btn">
+                  <button onClick={() => dispatch(updateCartQuantity({ cartKey: item.cartKey, quantity: item.quantity + 1 }))} className="quantity-btn">
                     <Plus size={12} />
                   </button>
                 </div>

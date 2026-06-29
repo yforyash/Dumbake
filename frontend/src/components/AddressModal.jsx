@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { X, MapPin, Home, Briefcase, Trash2, Plus, Loader } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { addAddress, deleteAddress } from '../services/api';
+import { setAddressOpen, setActiveAddress, addAddressState, deleteAddressState } from '../store/slices/addressSlice';
 
 const pinIcon = L.divIcon({
   html: `<div style="background-color: #D25C78; width: 18px; height: 18px; border: 3px solid #FFF; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3); position: relative;"><div style="content: ''; position: absolute; bottom: -8px; left: 5px; border-width: 5px 4px 0; border-style: solid; border-color: #D25C78 transparent;"></div></div>`,
@@ -29,16 +32,14 @@ function SyncMapCenter({ center }) {
   return null;
 }
 
-export default function AddressModal({
-  isOpen,
-  onClose,
-  user,
-  addresses,
-  activeAddress,
-  onSelectAddress,
-  onAddAddress,
-  onDeleteAddress
-}) {
+export default function AddressModal() {
+  const dispatch = useDispatch();
+  
+  const isOpen = useSelector((state) => state.address.isAddressOpen);
+  const user = useSelector((state) => state.auth.user);
+  const addresses = useSelector((state) => state.address.addresses);
+  const activeAddress = useSelector((state) => state.address.activeAddress);
+
   const [showForm, setShowForm] = useState(false);
   const [coords, setCoords] = useState({ lat: 23.3441, lng: 85.3096 });
   const [addressLine, setAddressLine] = useState('');
@@ -76,12 +77,13 @@ export default function AddressModal({
     if (!addressLine.trim()) return;
     setSaving(true);
     try {
-      await onAddAddress({
+      const newAddr = await addAddress({
         label,
         address_line: addressLine.trim(),
         latitude: coords.lat,
         longitude: coords.lng
       });
+      dispatch(addAddressState(newAddr));
       setShowForm(false);
       setAddressLine('');
     } catch (err) {
@@ -89,6 +91,21 @@ export default function AddressModal({
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDeleteClick = async (id) => {
+    if (confirm('Delete this address?')) {
+      try {
+        await deleteAddress(id);
+        dispatch(deleteAddressState(id));
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+  };
+
+  const handleClose = () => {
+    dispatch(setAddressOpen(false));
   };
 
   const getLabelIcon = (lbl) => {
@@ -129,7 +146,6 @@ export default function AddressModal({
         overflow: 'hidden',
         border: '1.5px solid var(--border-color)'
       }}>
-        {/* Header */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -142,7 +158,7 @@ export default function AddressModal({
             Choose Delivery Location
           </h3>
           <button 
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               background: 'none',
               border: 'none',
@@ -157,11 +173,9 @@ export default function AddressModal({
           </button>
         </div>
 
-        {/* Content */}
         <div style={{ overflowY: 'auto', flex: 1, padding: '1.5rem' }}>
           {!showForm ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {/* Address list */}
               {user && user.role !== 'anonymous' ? (
                 <>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -195,8 +209,8 @@ export default function AddressModal({
                               transition: 'all 0.2s ease'
                             }}
                             onClick={() => {
-                              onSelectAddress(addr);
-                              onClose();
+                              dispatch(setActiveAddress(addr));
+                              handleClose();
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1, overflow: 'hidden' }}>
@@ -223,9 +237,7 @@ export default function AddressModal({
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if(confirm('Delete this address?')) {
-                                  onDeleteAddress(addr.id);
-                                }
+                                handleDeleteClick(addr.id);
                               }}
                               style={{
                                 background: 'none',
@@ -280,7 +292,7 @@ export default function AddressModal({
                   </p>
                   <button 
                     onClick={() => {
-                      onClose();
+                      handleClose();
                       window.location.href = '/login';
                     }}
                     className="btn btn-primary"
@@ -292,7 +304,6 @@ export default function AddressModal({
               )}
             </div>
           ) : (
-            /* Add Address Form & Map Picker */
             <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div style={{
                 height: '220px',

@@ -2,7 +2,6 @@ const https = require('https');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-// 1. Initialize Twilio SDK client
 let twilio = null;
 try {
   if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
@@ -15,7 +14,6 @@ try {
   console.warn('[Notifications] Twilio library failed to load:', err.message);
 }
 
-// 2. Initialize Nodemailer fallback transporter
 function getFallbackTransporter() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
@@ -29,7 +27,6 @@ function getFallbackTransporter() {
   });
 }
 
-// 3. Centralized SMS sender
 async function sendSms(to, message) {
   if (!to) return;
   if (twilio) {
@@ -53,7 +50,6 @@ async function sendSms(to, message) {
   }
 }
 
-// 4. Centralized Email sender via Resend API (falling back to SMTP or logs)
 async function sendEmail({ to, subject, html }) {
   const resendKey = process.env.RESEND_API_KEY;
   
@@ -96,7 +92,6 @@ async function sendEmail({ to, subject, html }) {
     });
   }
 
-  // Fallback to Nodemailer SMTP
   const transporter = getFallbackTransporter();
   if (transporter) {
     const from = process.env.SMTP_FROM || '"Dumbake Support" <support@dumbake.com>';
@@ -110,7 +105,6 @@ async function sendEmail({ to, subject, html }) {
     }
   }
 
-  // Final fallback to terminal logs
   console.log(`\n======================================================`);
   console.log(`[EMAIL SIMULATOR] RESEND & SMTP NOT CONFIGURED`);
   console.log(`[EMAIL SIMULATOR] To: ${to}`);
@@ -120,7 +114,6 @@ async function sendEmail({ to, subject, html }) {
   return true;
 }
 
-// 5. Verification OTPs (Send both Email & SMS)
 async function sendVerificationCode(email, phone, code) {
   const emailHtml = `
     <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #f0f0f0; border-radius: 8px;">
@@ -136,16 +129,13 @@ async function sendVerificationCode(email, phone, code) {
     </div>
   `;
 
-  // Send Email code
   await sendEmail({ to: email, subject: 'Dumbake - Verify Your Account', html: emailHtml });
 
-  // Send SMS code (if phone provided)
   if (phone) {
     await sendSms(phone, `Your Dumbake verification code is ${code}. Valid for 1 hour. Chef Ishika is ready to bake your custom orders!`);
   }
 }
 
-// 6. Send Checkout Receipt HTML Invoice
 async function sendCheckoutReceipt(order) {
   const itemsList = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
   
@@ -198,12 +188,10 @@ async function sendCheckoutReceipt(order) {
     </div>
   `;
 
-  // Send Email invoice
   if (order.customer_email) {
     await sendEmail({ to: order.customer_email, subject: `Dumbake - Order Invoice #${order.id}`, html: emailHtml });
   }
 
-  // Send SMS confirmation
   if (order.customer_phone) {
     await sendSms(
       order.customer_phone,
@@ -212,7 +200,6 @@ async function sendCheckoutReceipt(order) {
   }
 }
 
-// 7. Send Order Status updates via SMS
 async function sendOrderStatusAlert(order, status, riderName = 'Amit Kumar') {
   if (!order.customer_phone) return;
   
@@ -233,13 +220,12 @@ async function sendOrderStatusAlert(order, status, riderName = 'Amit Kumar') {
       message = `Order Delivered! Enjoy your delicious bakes. Thank you for ordering from Dumbake Ranchi!`;
       break;
     default:
-      return; // Skip other statuses
+      return; 
   }
 
   await sendSms(order.customer_phone, message);
 }
 
-// 8. Newsletter subscription welcome
 async function sendNewsletterWelcome(email) {
   const emailHtml = `
     <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #f0f0f0; border-radius: 8px;">
@@ -254,7 +240,6 @@ async function sendNewsletterWelcome(email) {
   await sendEmail({ to: email, subject: 'Welcome to the Dumbake Flavour Club! 🍰', html: emailHtml });
 }
 
-// 9. Bulk order enquiry alert
 async function sendBulkEnquiryAlert(email, name, quantity, eventDate) {
   const emailHtml = `
     <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #f0f0f0; border-radius: 8px;">

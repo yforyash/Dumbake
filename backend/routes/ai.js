@@ -4,12 +4,10 @@ const { query } = require('../config/db');
 const { authenticate } = require('../middlewares/auth');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// 1. Get AI Personalized Recommendations
 router.get('/recommendations', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    
-    // Fetch all available items
+
     const itemsRes = await query('SELECT * FROM bakery_items WHERE status = $1', ['available']);
     const allItems = itemsRes.rows;
 
@@ -17,7 +15,6 @@ router.get('/recommendations', authenticate, async (req, res) => {
       return res.json([]);
     }
 
-    // Heuristics: Parse history
     let pastOrders = [];
     if (userId) {
       const ordersRes = await query('SELECT items FROM orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10', [userId]);
@@ -26,12 +23,11 @@ router.get('/recommendations', authenticate, async (req, res) => {
           const itemsArray = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
           pastOrders = pastOrders.concat(itemsArray);
         } catch (e) {
-          // ignore parsing error
+          
         }
       });
     }
 
-    // Try Gemini API if key is present
     if (process.env.GEMINI_API_KEY && pastOrders.length > 0) {
       try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -55,8 +51,7 @@ router.get('/recommendations', authenticate, async (req, res) => {
 
         const responseResult = await model.generateContent(prompt);
         let textResponse = responseResult.response.text().trim();
-        
-        // Clean up markdown wrapper if model returns it
+
         if (textResponse.startsWith('```json')) {
           textResponse = textResponse.substring(7, textResponse.length - 3).trim();
         } else if (textResponse.startsWith('```')) {
@@ -64,8 +59,7 @@ router.get('/recommendations', authenticate, async (req, res) => {
         }
 
         const recommendedIds = JSON.parse(textResponse);
-        
-        // Match IDs with actual database items and append reason
+
         const finalRecommendations = [];
         for (const rec of recommendedIds) {
           const matchedItem = allItems.find(item => item.id === parseInt(rec.id));
@@ -85,13 +79,11 @@ router.get('/recommendations', authenticate, async (req, res) => {
       }
     }
 
-    // Fallback: Local Smart Heuristic recommendation
-    // If user has orders: recommend items in their most frequently ordered category that they haven't bought yet
     const categoryCount = {};
     const orderedItemNames = new Set(pastOrders.map(item => item.name));
 
     pastOrders.forEach(item => {
-      // Find category in menu items
+      
       const matched = allItems.find(m => m.name === item.name);
       if (matched) {
         categoryCount[matched.category] = (categoryCount[matched.category] || 0) + 1;
@@ -109,22 +101,21 @@ router.get('/recommendations', authenticate, async (req, res) => {
 
     let recs = [];
     if (favoriteCategory) {
-      // Filter available items in favorite category that haven't been purchased
+      
       recs = allItems.filter(item => item.category === favoriteCategory && !orderedItemNames.has(item.name));
     }
 
-    // If we don't have enough recommendations, fall back to time-of-day heuristic
     if (recs.length < 3) {
       const currentHour = new Date().getHours();
       let preferredCategory = 'Cakes';
       if (currentHour >= 5 && currentHour < 12) {
-        // Morning -> Breads / Pastries
+        
         preferredCategory = Math.random() > 0.5 ? 'Breads' : 'Pastries';
       } else if (currentHour >= 12 && currentHour < 17) {
-        // Afternoon -> Savories / Cookies
+        
         preferredCategory = Math.random() > 0.5 ? 'Savories' : 'Cookies';
       } else {
-        // Evening/Night -> Cakes / Pastries
+        
         preferredCategory = 'Cakes';
       }
 
@@ -132,7 +123,6 @@ router.get('/recommendations', authenticate, async (req, res) => {
       recs = recs.concat(extraItems);
     }
 
-    // If still empty, get bestsellers or any items
     if (recs.length === 0) {
       recs = allItems.filter(item => item.is_bestseller).slice(0, 3);
     }
@@ -140,7 +130,6 @@ router.get('/recommendations', authenticate, async (req, res) => {
       recs = allItems.slice(0, 3);
     }
 
-    // Map default reasons
     const finalRecs = recs.slice(0, 3).map(item => {
       let reason = 'Chef recommendation for a delightful treat!';
       if (item.category === 'Breads') reason = 'Freshly baked sourdough to start your day right!';
@@ -159,10 +148,9 @@ router.get('/recommendations', authenticate, async (req, res) => {
   }
 });
 
-// 2. Get Dynamic AI Bestsellers (based on real-time order statistics)
 router.get('/bestsellers', async (req, res) => {
   try {
-    // We analyze the orders table to calculate dynamic bestsellers
+    
     const ordersRes = await query('SELECT items FROM orders WHERE status != $1', ['Cancelled']);
     const salesCount = {};
 
@@ -173,15 +161,13 @@ router.get('/bestsellers', async (req, res) => {
           salesCount[item.id] = (salesCount[item.id] || 0) + item.quantity;
         });
       } catch (e) {
-        // ignore parsing error
+        
       }
     });
 
-    // Fetch all items
     const itemsRes = await query('SELECT * FROM bakery_items WHERE status = $1', ['available']);
     const allItems = itemsRes.rows;
 
-    // Map sales count to items
     const itemsWithSales = allItems.map(item => {
       return {
         ...item,
@@ -189,7 +175,6 @@ router.get('/bestsellers', async (req, res) => {
       };
     });
 
-    // Sort by sales volume (descending) and is_bestseller flag (as a fallback / weight)
     itemsWithSales.sort((a, b) => {
       if (b.sales_volume !== a.sales_volume) {
         return b.sales_volume - a.sales_volume;
@@ -197,7 +182,6 @@ router.get('/bestsellers', async (req, res) => {
       return (b.is_bestseller ? 1 : 0) - (a.is_bestseller ? 1 : 0);
     });
 
-    // Return the top 4 bestsellers
     res.json(itemsWithSales.slice(0, 4));
   } catch (err) {
     res.status(500).json({ error: err.message });

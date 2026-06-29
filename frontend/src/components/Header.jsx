@@ -1,14 +1,28 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { ShoppingBag, LogIn, LogOut, User, LayoutDashboard, History, Search, Phone, MapPin } from 'lucide-react';
+import { clearUser } from '../store/slices/authSlice';
+import { clearCart, setCartOpen } from '../store/slices/cartSlice';
+import { setAddresses, setActiveAddress, setAddressOpen } from '../store/slices/addressSlice';
 
-export default function Header({ user, onLogout, cartCount, onCartClick, activeAddress, onAddressClick }) {
+export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState('');
 
+  const user = useSelector((state) => state.auth.user);
+  const cartItems = useSelector((state) => state.cart.cartItems);
+  const activeAddress = useSelector((state) => state.address.activeAddress);
+
+  const cartCount = cartItems.reduce((acc, curr) => acc + curr.quantity, 0);
+
   const handleLogoutClick = () => {
-    onLogout();
+    dispatch(clearUser());
+    dispatch(clearCart());
+    dispatch(setAddresses([]));
+    dispatch(setActiveAddress(null));
     navigate('/login');
   };
 
@@ -34,23 +48,20 @@ export default function Header({ user, onLogout, cartCount, onCartClick, activeA
 
   return (
     <>
-      {/* Top Ticker announcement bar */}
       <div className="announcement-bar">
         <span>✨ Same-Day Cake Delivery in Ranchi. Baked fresh daily with premium ingredients! ✨</span>
       </div>
 
       <header className="header" style={{ backgroundColor: '#ffffff', borderBottom: '1px solid var(--border-color)' }}>
-        {/* Main top header row */}
         <div className="header-container" style={{ padding: '0.8rem 1.5rem', gap: '20px' }}>
           
-          {/* Logo and Address link */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <Link to="/" className="logo" style={{ color: 'var(--accent-color)', fontSize: '2rem', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 'bold' }}>
               Dumbake🍰
             </Link>
             
             <div 
-              onClick={onAddressClick}
+              onClick={() => dispatch(setAddressOpen(true))}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -78,7 +89,6 @@ export default function Header({ user, onLogout, cartCount, onCartClick, activeA
             </div>
           </div>
 
-          {/* Search bar form */}
           <form onSubmit={handleSearchSubmit} style={{ flex: '1', maxWidth: '500px', position: 'relative', display: 'flex', alignItems: 'center' }}>
             <input 
               type="text" 
@@ -98,9 +108,7 @@ export default function Header({ user, onLogout, cartCount, onCartClick, activeA
             <Search size={16} style={{ position: 'absolute', left: '12px', color: 'var(--accent-color)' }} />
           </form>
 
-          {/* Contact and actions group */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            {/* Phone link */}
             <a href="tel:+919151463571" style={{ display: 'none', lg: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-color)', fontWeight: '700', fontSize: '0.85rem' }} className="phone-nav-link">
               <Phone size={16} />
               <span>+91 91514 63571</span>
@@ -146,7 +154,6 @@ export default function Header({ user, onLogout, cartCount, onCartClick, activeA
               </Link>
             )}
 
-            {/* Admin and Owner dashboard links */}
             {user && user.role === 'admin' && (
               <>
                 <Link to="/admin-dashboard" className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '12px' }}>
@@ -158,9 +165,8 @@ export default function Header({ user, onLogout, cartCount, onCartClick, activeA
               </>
             )}
 
-            {/* Shopping Cart button trigger */}
             <button 
-              onClick={onCartClick} 
+              onClick={() => dispatch(setCartOpen(true))} 
               className="btn btn-primary" 
               style={{ 
                 position: 'relative', 
@@ -179,7 +185,6 @@ export default function Header({ user, onLogout, cartCount, onCartClick, activeA
           </div>
         </div>
 
-        {/* Sub-header navigation row */}
         <div style={{ backgroundColor: 'var(--accent-color)', padding: '8px 1.5rem', display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '20px', borderTop: '1px solid var(--border-color)' }}>
           <span onClick={() => scrollToSection('best-sellers')} className="nav-link-sub" style={{ color: '#ffffff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
             Best Sellers

@@ -33,7 +33,6 @@ if (pool) {
   isMock = true;
 }
 
-// A robust mock data state for when Postgres is not running or credentials are wrong
 const mockState = {
   users: [
     { id: 1, name: 'Ishika (Owner)', email: 'admin@dumbake.com', password_hash: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', role: 'admin', wallet_balance: 5000.00, is_verified: true, verification_code: null }
@@ -111,15 +110,14 @@ async function query(text, params) {
     return await pool.query(text, params);
   } catch (err) {
     console.warn('[DB Query failed] Falling back to mock state.', err.message);
-    isMock = true; // latch to mock
+    isMock = true; 
     return runMockQuery(text, params);
   }
 }
 
 function runMockQuery(text, params = []) {
   const norm = text.toLowerCase().trim();
-  
-  // 1. SELECT ... FROM bakery_items
+
   if ((norm.includes('from bakery_items') || norm.includes('from items')) && !norm.includes('delete')) {
     let list = [...mockState.bakery_items];
     if (norm.includes('category =')) {
@@ -136,8 +134,7 @@ function runMockQuery(text, params = []) {
     }
     return { rows: list };
   }
-  
-  // 2. SELECT id, name, email, role, wallet_balance FROM users
+
   if (norm.includes('select') && norm.includes('users') && norm.includes('email =')) {
     const email = params[0];
     const user = mockState.users.find(u => u.email === email);
@@ -150,7 +147,6 @@ function runMockQuery(text, params = []) {
     return { rows: user ? [user] : [] };
   }
 
-  // 3. INSERT INTO users
   if (norm.includes('insert into users')) {
     let name, email, passwordHash, role, code, phone;
     
@@ -229,7 +225,6 @@ function runMockQuery(text, params = []) {
     return { rows: [publicUser] };
   }
 
-  // 3b. UPDATE users
   if (norm.includes('update users')) {
     let user;
     if (norm.includes('where email =')) {
@@ -281,7 +276,6 @@ function runMockQuery(text, params = []) {
     return { rows: publicUser ? [publicUser] : [] };
   }
 
-  // 3b. INSERT INTO bakery_items
   if (norm.includes('insert into bakery_items')) {
     const [name, description, price, category, image_url, is_eggless, is_bestseller, stock_quantity] = params;
     const newItem = {
@@ -301,10 +295,9 @@ function runMockQuery(text, params = []) {
     return { rows: [newItem] };
   }
 
-  // 3c. UPDATE bakery_items
   if (norm.includes('update bakery_items')) {
     if (norm.includes('stock_quantity = stock_quantity -')) {
-      // Stock decrement query: params = [quantity, id]
+      
       const quantity = parseInt(params[0]);
       const id = parseInt(params[1]);
       const item = mockState.bakery_items.find(i => i.id === id);
@@ -317,7 +310,7 @@ function runMockQuery(text, params = []) {
       }
       return { rows: item ? [item] : [] };
     } else {
-      // Admin update query: params = [name, description, price, category, image_url, is_eggless, is_bestseller, stock_quantity, status, id]
+      
       const id = parseInt(params[params.length - 1]);
       const item = mockState.bakery_items.find(i => i.id === id);
       if (item) {
@@ -342,7 +335,6 @@ function runMockQuery(text, params = []) {
     }
   }
 
-  // 3d. DELETE FROM bakery_items
   if (norm.includes('delete from bakery_items')) {
     const id = params[0];
     mockState.bakery_items = mockState.bakery_items.filter(i => i.id !== parseInt(id));
@@ -350,7 +342,6 @@ function runMockQuery(text, params = []) {
     return { rows: [] };
   }
 
-  // 4. INSERT INTO orders
   if (norm.includes('insert into orders')) {
     const [userId, items, totalPrice, deliveryType, address, paymentMethod, paymentStatus, customerName, customerPhone, latitude, longitude] = params;
     const newOrder = {
@@ -374,20 +365,47 @@ function runMockQuery(text, params = []) {
     return { rows: [newOrder] };
   }
 
-  // 5. SELECT * FROM orders
-  if (norm.includes('select * from orders')) {
-    if (norm.includes('count(*)')) {
-      let list = [...mockState.orders];
-      if (norm.includes('user_id =')) {
-        const uId = parseInt(params[0]);
-        list = list.filter(o => o.user_id === uId);
-      }
-      return { rows: [{ count: list.length }] };
+  if (norm.includes('from orders') && norm.includes('count(')) {
+    let list = [...mockState.orders];
+    if (norm.includes('user_id =')) {
+      const uId = parseInt(params[0]);
+      list = list.filter(o => o.user_id === uId);
     }
+    return { rows: [{ count: list.length }] };
+  }
+
+  if (norm.includes('select * from orders')) {
     return { rows: [...mockState.orders].reverse() };
   }
 
-  // 6. SELECT * FROM reviews
+  if (norm.includes('insert into password_resets')) {
+    const [email, token, expiresAt] = params;
+    const newReset = {
+      id: mockState.resets.length + 1,
+      email,
+      token,
+      expires_at: expiresAt,
+      created_at: new Date()
+    };
+    mockState.resets.push(newReset);
+    saveMockState();
+    return { rows: [newReset] };
+  }
+
+  if (norm.includes('from password_resets') && norm.includes('token =')) {
+    const email = params[0];
+    const token = params[1];
+    const found = mockState.resets.find(r => r.email === email && r.token === token && new Date(r.expires_at) > new Date());
+    return { rows: found ? [found] : [] };
+  }
+
+  if (norm.includes('delete from password_resets')) {
+    const email = params[0];
+    mockState.resets = mockState.resets.filter(r => r.email !== email);
+    saveMockState();
+    return { rows: [] };
+  }
+
   if (norm.includes('select * from reviews') || norm.includes('from reviews')) {
     const reviewsWithItemName = mockState.reviews.map(r => {
       const matchedItem = mockState.bakery_items.find(i => i.id === r.item_id);
@@ -399,12 +417,10 @@ function runMockQuery(text, params = []) {
     return { rows: [...reviewsWithItemName].reverse() };
   }
 
-  // 6b. SELECT * FROM bulk_enquiries
   if (norm.includes('select * from bulk_enquiries')) {
     return { rows: [...mockState.bulk_enquiries].reverse() };
   }
 
-  // 7. INSERT INTO reviews
   if (norm.includes('insert into reviews')) {
     const [userId, reviewerName, rating, comment, itemId] = params;
     const newReview = {
@@ -421,7 +437,6 @@ function runMockQuery(text, params = []) {
     return { rows: [newReview] };
   }
 
-  // 8. INSERT INTO subscribers
   if (norm.includes('insert into subscribers')) {
     const [email] = params;
     const newSub = {
@@ -434,7 +449,6 @@ function runMockQuery(text, params = []) {
     return { rows: [newSub] };
   }
 
-  // 9. INSERT INTO bulk_enquiries
   if (norm.includes('insert into bulk_enquiries')) {
     const [name, email, phone, eventDate, quantity, notes] = params;
     const newEnq = {
@@ -452,7 +466,6 @@ function runMockQuery(text, params = []) {
     return { rows: [newEnq] };
   }
 
-  // 10. SELECT * FROM user_addresses
   if (norm.includes('from user_addresses') && !norm.includes('insert') && !norm.includes('update') && !norm.includes('delete')) {
     const userId = params[0];
     let list = mockState.user_addresses || [];
@@ -462,7 +475,6 @@ function runMockQuery(text, params = []) {
     return { rows: list };
   }
 
-  // 11. INSERT INTO user_addresses
   if (norm.includes('insert into user_addresses')) {
     const [userId, label, addressLine, latitude, longitude] = params;
     if (!mockState.user_addresses) mockState.user_addresses = [];
@@ -480,7 +492,6 @@ function runMockQuery(text, params = []) {
     return { rows: [newAddr] };
   }
 
-  // 12. DELETE FROM user_addresses
   if (norm.includes('delete from user_addresses')) {
     const id = parseInt(params[0]);
     if (mockState.user_addresses) {
@@ -490,7 +501,6 @@ function runMockQuery(text, params = []) {
     return { rows: [] };
   }
 
-  // 13. UPDATE orders
   if (norm.includes('update orders')) {
     if (norm.includes('rider_latitude') || norm.includes('rider_longitude')) {
       const riderLat = params[0] ? parseFloat(params[0]) : null;
@@ -519,7 +529,6 @@ function runMockQuery(text, params = []) {
     }
   }
 
-  // Fallback default response
   return { rows: [] };
 }
 

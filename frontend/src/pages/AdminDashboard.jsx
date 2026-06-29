@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { 
   fetchOrders, fetchItems, fetchReviews, updateOrderStatus, addBakeryItem, 
   deleteBakeryItem, updateBakeryItem, fetchAIBestsellers, fetchBulkEnquiries 
@@ -36,23 +37,21 @@ const CustomTooltip = ({ active, payload }) => {
   return null;
 };
 
-export default function AdminDashboard({ user }) {
+export default function AdminDashboard() {
   const navigate = useNavigate();
+  const user = useSelector((state) => state.auth.user);
   const [orders, setOrders] = useState([]);
   const [items, setItems] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [bestsellers, setBestsellers] = useState([]);
   const [enquiries, setEnquiries] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Tab control: 'stats', 'orders', 'items', 'reviews', 'enquiries'
+
   const [activeTab, setActiveTab] = useState('stats');
 
-  // Add/Edit Item modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  
-  // Form fields for items
+
   const [itemName, setItemName] = useState('');
   const [itemDesc, setItemDesc] = useState('');
   const [itemPrice, setItemPrice] = useState('');
@@ -185,19 +184,17 @@ export default function AdminDashboard({ user }) {
     }
   };
 
-  // Stats derivations
   const totalRevenue = orders
     .filter(o => o.status !== 'Cancelled')
     .reduce((acc, curr) => acc + parseFloat(curr.total_price), 0);
   
   const totalUsers = new Set(orders.map(o => o.user_id)).size;
 
-  // Chart data formatting: Revenue by category
   const categoryRevenue = {};
   orders.filter(o => o.status !== 'Cancelled').forEach(order => {
     const itemsList = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
     itemsList.forEach(item => {
-      // Find item in local cache to match category
+      
       const matched = items.find(i => i.name === item.name);
       const cat = matched ? matched.category : 'Breads';
       categoryRevenue[cat] = (categoryRevenue[cat] || 0) + item.price * item.quantity;
@@ -209,7 +206,6 @@ export default function AdminDashboard({ user }) {
     Revenue: categoryRevenue[cat]
   }));
 
-  // Sales by item (Revenue and Volume)
   const itemSales = {};
   orders.filter(o => o.status !== 'Cancelled').forEach(order => {
     const itemsList = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
@@ -229,7 +225,6 @@ export default function AdminDashboard({ user }) {
     Quantity: itemSales[name].quantity
   }));
 
-  // Average rating per item
   const itemRatings = {};
   reviews.forEach(r => {
     if (r.item_name) {
@@ -248,7 +243,6 @@ export default function AdminDashboard({ user }) {
     Count: itemRatings[name].count
   }));
 
-  // Rating distribution counts (5★ down to 1★)
   const starCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
   reviews.forEach(r => {
     if (starCounts[r.rating] !== undefined) {
@@ -262,7 +256,7 @@ export default function AdminDashboard({ user }) {
     rating: parseInt(star)
   })).reverse();
 
-  const RATING_COLORS = ['#FA5252', '#FF8787', '#FFA94D', '#82ca9d', '#FFB800']; // 1 to 5 stars
+  const RATING_COLORS = ['#FA5252', '#FF8787', '#FFA94D', '#82ca9d', '#FFB800']; 
 
   if (!user || user.role !== 'admin') {
     return null;
@@ -299,7 +293,7 @@ export default function AdminDashboard({ user }) {
       )}
 
       <div className="dashboard-grid">
-        {/* Left Side: Sidebar tabs */}
+        
         <aside className="dashboard-sidebar">
           <div 
             onClick={() => setActiveTab('stats')} 
@@ -333,13 +327,11 @@ export default function AdminDashboard({ user }) {
           </div>
         </aside>
 
-        {/* Right Side: Tab Panel Content */}
         <main style={{ minHeight: '60vh' }}>
-          
-          {/* STATS & AI ANALYTICS TAB */}
+
           {activeTab === 'stats' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-              {/* Metric Row */}
+              
               <div className="grid grid-4" style={{ gap: '1rem' }}>
                 <div className="metric-card">
                   <div>
@@ -374,9 +366,8 @@ export default function AdminDashboard({ user }) {
                 </div>
               </div>
 
-              {/* Row 1: Category Sales & AI predictions */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }} className="grid-2">
-                {/* Recharts category revenue graph */}
+                
                 <div className="card" style={{ padding: '1.5rem' }}>
                   <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', fontFamily: 'var(--font-serif)' }}>Category Sales Dynamics</h3>
                   <div style={{ width: '100%', height: '260px' }}>
@@ -396,7 +387,6 @@ export default function AdminDashboard({ user }) {
                   </div>
                 </div>
 
-                {/* AI Predictive Bestsellers */}
                 <div className="card" style={{ padding: '1.5rem' }}>
                   <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem', fontFamily: 'var(--font-serif)' }}>AI Bestseller Volume Predictions</h3>
                   <p style={{ fontSize: '0.8rem', marginBottom: '1.25rem' }}>Moving averages computed on order logs over the last 30 days:</p>
@@ -419,7 +409,6 @@ export default function AdminDashboard({ user }) {
                 </div>
               </div>
 
-              {/* Row 2: Product Sales Performance (Wide Full Width) */}
               <div className="card" style={{ padding: '1.5rem' }}>
                 <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', fontFamily: 'var(--font-serif)' }}>Sales Performance per Menu Item</h3>
                 <div style={{ width: '100%', height: '320px' }}>
@@ -442,9 +431,8 @@ export default function AdminDashboard({ user }) {
                 </div>
               </div>
 
-              {/* Row 3: Product Feedback Ratings & Review Distribution */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }} className="grid-2">
-                {/* Average Ratings per Menu Item */}
+                
                 <div className="card" style={{ padding: '1.5rem' }}>
                   <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', fontFamily: 'var(--font-serif)' }}>Average Ratings per Menu Item</h3>
                   <div style={{ width: '100%', height: '280px' }}>
@@ -464,7 +452,6 @@ export default function AdminDashboard({ user }) {
                   </div>
                 </div>
 
-                {/* Overall Rating Distribution */}
                 <div className="card" style={{ padding: '1.5rem' }}>
                   <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', fontFamily: 'var(--font-serif)' }}>Customer Review Rating Distribution</h3>
                   <div style={{ width: '100%', height: '280px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
@@ -491,7 +478,7 @@ export default function AdminDashboard({ user }) {
                             </PieChart>
                           </ResponsiveContainer>
                         </div>
-                        {/* Custom Legend */}
+                        
                         <div style={{ width: '40%', paddingLeft: '10px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
                           {ratingDistributionData.map((entry, index) => (
                             <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -511,7 +498,6 @@ export default function AdminDashboard({ user }) {
             </div>
           )}
 
-          {/* MANAGE ALL ORDERS TAB */}
           {activeTab === 'orders' && (
             <div className="table-container">
               <table className="table">
@@ -588,7 +574,6 @@ export default function AdminDashboard({ user }) {
             </div>
           )}
 
-          {/* MANAGE MENU ITEMS TAB */}
           {activeTab === 'items' && (
             <div className="table-container">
               <table className="table">
@@ -660,7 +645,6 @@ export default function AdminDashboard({ user }) {
             </div>
           )}
 
-          {/* CUSTOMER LOGS TAB */}
           {activeTab === 'reviews' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {reviews.map(rev => (
@@ -680,7 +664,6 @@ export default function AdminDashboard({ user }) {
             </div>
           )}
 
-          {/* BULK ENQUIRIES TAB */}
           {activeTab === 'enquiries' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -742,7 +725,6 @@ export default function AdminDashboard({ user }) {
         </main>
       </div>
 
-      {/* CREATE / EDIT ITEM DIALOG MODAL */}
       {isModalOpen && createPortal(
         <div className="dialog-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="dialog-content" onClick={(e) => e.stopPropagation()}>

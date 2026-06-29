@@ -10,7 +10,6 @@ const PORT = process.env.PORT || 5001;
 app.use(cors());
 app.use(express.json());
 
-// Normalization middleware for serverless routing prefixes (Netlify/Vercel)
 app.use((req, res, next) => {
   if (req.url.startsWith('/_/backend')) {
     req.url = req.url.replace('/_/backend', '');
@@ -24,7 +23,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Request logger middleware (simple implementation)
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
@@ -32,7 +30,7 @@ app.use((req, res, next) => {
 
 async function initDatabase() {
   try {
-    // 1. Users Table
+    
     await query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -48,7 +46,6 @@ async function initDatabase() {
       );
     `);
 
-    // Dynamic schema migration: add columns if table already existed without them
     try {
       await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE`);
       await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code VARCHAR(10)`);
@@ -57,7 +54,6 @@ async function initDatabase() {
       console.warn('[DB Init] ALTER TABLE users column checks bypassed (mock mode or other database):', e.message);
     }
 
-    // 2. Password Resets Table
     await query(`
       CREATE TABLE IF NOT EXISTS password_resets (
         id SERIAL PRIMARY KEY,
@@ -68,7 +64,6 @@ async function initDatabase() {
       );
     `);
 
-    // 3. Bakery Items Table
     await query(`
       CREATE TABLE IF NOT EXISTS bakery_items (
         id SERIAL PRIMARY KEY,
@@ -85,7 +80,6 @@ async function initDatabase() {
       );
     `);
 
-    // 4. Orders Table
     await query(`
       CREATE TABLE IF NOT EXISTS orders (
         id SERIAL PRIMARY KEY,
@@ -103,7 +97,6 @@ async function initDatabase() {
       );
     `);
 
-    // 5. Reviews Table
     await query(`
       CREATE TABLE IF NOT EXISTS reviews (
         id SERIAL PRIMARY KEY,
@@ -122,7 +115,6 @@ async function initDatabase() {
       console.log('[DB Init] reviews column item_id alteration status:', e.message);
     }
 
-    // 6. Subscribers Table
     await query(`
       CREATE TABLE IF NOT EXISTS subscribers (
         id SERIAL PRIMARY KEY,
@@ -131,7 +123,6 @@ async function initDatabase() {
       );
     `);
 
-    // 7. Bulk Enquiries Table
     await query(`
       CREATE TABLE IF NOT EXISTS bulk_enquiries (
         id SERIAL PRIMARY KEY,
@@ -193,21 +184,15 @@ app.use('/api/ai', require('./routes/ai'));
 app.use('/api/addresses', require('./routes/addresses'));
 app.use('/api/payments', require('./routes/payments'));
 
-
-
-
-// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'Dumbake API Backend' });
 });
 
-// Global error handler
 app.use((err, req, res, next) => {
   console.error('[Unhandled Error]', err.stack);
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
-// Initialize database on startup
 initDatabase();
 
 if (require.main === module) {

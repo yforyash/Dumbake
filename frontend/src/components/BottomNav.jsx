@@ -1,10 +1,17 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { Home, History, LayoutDashboard, User, ShoppingBag } from 'lucide-react';
+import { setCartOpen } from '../store/slices/cartSlice';
 
-export default function BottomNav({ user, cartCount, onCartClick }) {
+export default function BottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
+
+  const user = useSelector((state) => state.auth.user);
+  const cartItems = useSelector((state) => state.cart.cartItems);
+  const cartCount = cartItems.reduce((acc, curr) => acc + curr.quantity, 0);
 
   const handleDashboardClick = () => {
     if (!user) {
@@ -60,7 +67,7 @@ export default function BottomNav({ user, cartCount, onCartClick }) {
 
       <div 
         className="bottom-nav-item"
-        onClick={onCartClick}
+        onClick={() => dispatch(setCartOpen(true))}
         style={{ position: 'relative' }}
       >
         <ShoppingBag size={20} />

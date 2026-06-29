@@ -5,7 +5,6 @@ const { authenticate, requireRole } = require('../middlewares/auth');
 const { sendBulkEnquiryEmail } = require('../utils/mailer');
 const { sendCheckoutReceipt, sendOrderStatusAlert, sendBulkEnquiryAlert } = require('../utils/notifications');
 
-// Create order (Customer/User only)
 router.post('/', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -19,7 +18,6 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'No items in the cart.' });
     }
 
-    // 1. Verify item stock quantities
     for (const item of items) {
       const itemRes = await query('SELECT stock_quantity, status FROM bakery_items WHERE id = $1', [item.id]);
       if (itemRes.rows.length === 0) {
@@ -31,7 +29,6 @@ router.post('/', authenticate, async (req, res) => {
       }
     }
 
-    // 2. Calculate dynamic discount and process payment (wallet-based simulation)
     const orderCountRes = await query('SELECT COUNT(*)::integer FROM orders WHERE user_id = $1', [userId]);
     const orderCount = parseInt(orderCountRes.rows[0]?.count || 0);
 
@@ -91,7 +88,6 @@ router.post('/', authenticate, async (req, res) => {
       }
     }
 
-    // 3. Decrement stock quantities
     for (const item of items) {
       await query(
         `UPDATE bakery_items
@@ -102,7 +98,6 @@ router.post('/', authenticate, async (req, res) => {
       );
     }
 
-    // 4. Save order to database
     const orderRes = await query(
       `INSERT INTO orders (user_id, items, total_price, status, delivery_type, address, payment_method, payment_status, customer_name, customer_phone, latitude, longitude)
        VALUES ($1, $2, $3, 'Placed', $4, $5, $6, $7, $8, $9, $10, $11)
@@ -124,7 +119,6 @@ router.post('/', authenticate, async (req, res) => {
 
     const order = orderRes.rows[0];
 
-    // Trigger HTML invoice receipt email via Resend and confirmation SMS via Twilio
     sendCheckoutReceipt({
       ...order,
       customer_email: req.user.email
@@ -138,7 +132,6 @@ router.post('/', authenticate, async (req, res) => {
   }
 });
 
-// Get orders (Authenticated only)
 router.get('/', authenticate, async (req, res) => {
   try {
     if (req.user.role === 'anonymous') {
@@ -147,10 +140,10 @@ router.get('/', authenticate, async (req, res) => {
 
     let result;
     if (req.user.role === 'admin') {
-      // Admin sees all orders
+      
       result = await query('SELECT * FROM orders ORDER BY created_at DESC');
     } else {
-      // Regular customer sees only their own orders
+      
       result = await query('SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
     }
     
@@ -160,7 +153,6 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-// Update order status (Admin only)
 router.put('/:id/status', authenticate, requireRole(['admin']), async (req, res) => {
   try {
     const { id } = req.params;
@@ -172,8 +164,7 @@ router.put('/:id/status', authenticate, requireRole(['admin']), async (req, res)
     }
 
     const order = check.rows[0];
-    
-    // Update query
+
     let updateSql = 'UPDATE orders SET status = COALESCE($1, status)';
     const params = [status];
     let paramIndex = 2;
@@ -183,7 +174,6 @@ router.put('/:id/status', authenticate, requireRole(['admin']), async (req, res)
       params.push(payment_status);
       paramIndex++;
 
-      // If status is updated to Paid (e.g. COD collected), check wallet deductions if applicable (none for COD, but clean representation)
     }
 
     updateSql += ` WHERE id = $${paramIndex} RETURNING *`;
@@ -204,7 +194,6 @@ router.put('/:id/status', authenticate, requireRole(['admin']), async (req, res)
   }
 });
 
-// Submit bulk order enquiry
 router.post('/bulk-enquiry', async (req, res) => {
   try {
     const { name, email, phone, eventDate, quantity, notes } = req.body;
@@ -219,7 +208,6 @@ router.post('/bulk-enquiry', async (req, res) => {
       [name, email, phone, eventDate, parseInt(quantity), notes || '']
     );
 
-    // Send confirmation email to the client
     await sendBulkEnquiryEmail(email, name, parseInt(quantity), eventDate);
 
     res.status(201).json(result.rows[0]);
@@ -228,7 +216,6 @@ router.post('/bulk-enquiry', async (req, res) => {
   }
 });
 
-// Get all bulk enquiries (Admin only)
 router.get('/bulk-enquiries', authenticate, requireRole(['admin']), async (req, res) => {
   try {
     const result = await query('SELECT * FROM bulk_enquiries ORDER BY created_at DESC');
@@ -238,7 +225,6 @@ router.get('/bulk-enquiries', authenticate, requireRole(['admin']), async (req, 
   }
 });
 
-// Update rider real-time GPS coordinates
 router.put('/:id/rider-location', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
@@ -259,7 +245,6 @@ router.put('/:id/rider-location', authenticate, async (req, res) => {
   }
 });
 
-// Update order delivery status (Rider Console actions)
 router.put('/:id/rider-status', authenticate, async (req, res) => {
   try {
     const { id } = req.params;

@@ -1,7 +1,4 @@
-/**
- * Dynamically injects the Stripe.js script tag into the document body.
- * @returns {Promise<boolean>} Resolves to true when the script loads successfully.
- */
+
 export function loadStripeScript() {
   return new Promise((resolve) => {
     if (window.Stripe) {
@@ -24,10 +21,6 @@ export function loadStripeScript() {
   });
 }
 
-/**
- * Dynamically injects the Razorpay Checkout script tag into the document body.
- * @returns {Promise<boolean>} Resolves to true when the script loads successfully.
- */
 export function loadRazorpayScript() {
   return new Promise((resolve) => {
     if (window.Razorpay) {
