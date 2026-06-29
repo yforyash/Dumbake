@@ -1,5 +1,4 @@
 {
-  "cleanUrls": true,
   "outputDirectory": "frontend/dist",
   "rewrites": [
     {
@@ -11,7 +10,7 @@
       "destination": "/api"
     },
     {
-      "source": "/((?!api|assets|favicon.ico|_next).*)",
+      "source": "/((?!api|assets|pwa-icon.png|bakery_video.mp4|manifest.json|sw.js).*)",
       "destination": "/index.html"
     }
   ]

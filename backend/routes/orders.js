@@ -119,7 +119,7 @@ router.post('/', authenticate, async (req, res) => {
 
     const order = orderRes.rows[0];
 
-    sendCheckoutReceipt({
+    await sendCheckoutReceipt({
       ...order,
       customer_email: req.user.email
     }).catch(err => {
@@ -191,7 +191,7 @@ const handleStatusUpdate = async (req, res) => {
     const updatedOrder = result.rows[0];
 
     if (updatedOrder && status) {
-      sendOrderStatusAlert(updatedOrder, status).catch(err => {
+      await sendOrderStatusAlert(updatedOrder, status).catch(err => {
         console.error('[Notifications] Failed to send status alert:', err.message);
       });
     }
@@ -282,7 +282,7 @@ router.put('/:id/rider-status', authenticate, async (req, res) => {
 
     const updatedOrder = result.rows[0];
     if (updatedOrder) {
-      sendOrderStatusAlert(updatedOrder, status, req.user?.name).catch(err => {
+      await sendOrderStatusAlert(updatedOrder, status, req.user?.name).catch(err => {
         console.error('[Notifications] Failed to send rider status alert:', err.message);
       });
     }
