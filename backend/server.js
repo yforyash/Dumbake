@@ -196,6 +196,44 @@ async function initDatabase() {
       );
     `);
 
+    // Uploaded files (binary storage)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS uploaded_files (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        filename VARCHAR(255) NOT NULL,
+        mime_type VARCHAR(100) NOT NULL,
+        size INTEGER NOT NULL,
+        data BYTEA NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Complaints table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS complaints (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        subject VARCHAR(255) NOT NULL,
+        description TEXT NOT NULL,
+        status VARCHAR(50) DEFAULT 'Open',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Complaint messages (support chatbox log)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS complaint_messages (
+        id SERIAL PRIMARY KEY,
+        complaint_id INTEGER REFERENCES complaints(id) ON DELETE CASCADE,
+        sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        message TEXT,
+        file_id INTEGER REFERENCES uploaded_files(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Seed bakery items (uses helper in config/seed.js)
     const { seedBakeryItems } = require('./config/seed');
     await seedBakeryItems();
@@ -236,6 +274,7 @@ app.use('/api/addresses', require('./routes/addresses'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/logistics', require('./routes/logistics'));
 app.use('/api/userfiles', require('./routes/userFiles'));
+app.use('/api/complaints', require('./routes/complaints'));
 
 // Health endpoint
 app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'Dumake API Backend' }));

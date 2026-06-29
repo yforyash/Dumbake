@@ -349,6 +349,134 @@ function runMockQuery(text, params = []) {
     return { rows: [] };
   }
 
+  // --- COMPLAINTS SYSTEM MOCK QUERIES ---
+  if (!mockState.complaints) mockState.complaints = [];
+  if (!mockState.complaint_messages) mockState.complaint_messages = [];
+  if (!mockState.uploaded_files) mockState.uploaded_files = [];
+
+  // INSERT INTO UPLOADED_FILES
+  if (norm.includes('insert into uploaded_files')) {
+    const [userId, filename, mimeType, size, data] = params;
+    const newFile = {
+      id: mockState.uploaded_files.length + 1,
+      user_id: parseInt(userId),
+      filename,
+      mime_type: mimeType,
+      size: parseInt(size),
+      data,
+      created_at: new Date()
+    };
+    mockState.uploaded_files.push(newFile);
+    saveMockState();
+    return { rows: [newFile] };
+  }
+
+  // SELECT FROM UPLOADED_FILES
+  if (norm.includes('from uploaded_files')) {
+    const id = parseInt(params[0]);
+    const file = mockState.uploaded_files.find(f => f.id === id);
+    return { rows: file ? [file] : [] };
+  }
+
+  // INSERT INTO COMPLAINTS
+  if (norm.includes('insert into complaints')) {
+    const [orderId, userId, subject, description] = params;
+    const newComplaint = {
+      id: mockState.complaints.length + 1,
+      order_id: parseInt(orderId),
+      user_id: parseInt(userId),
+      subject,
+      description,
+      status: 'Open',
+      created_at: new Date()
+    };
+    mockState.complaints.push(newComplaint);
+    saveMockState();
+    return { rows: [newComplaint] };
+  }
+
+  // SELECT FROM COMPLAINTS
+  if (norm.includes('from complaints')) {
+    if (norm.includes('c.user_id =') || norm.includes('user_id =')) {
+      const uId = parseInt(params[0]);
+      const list = mockState.complaints.filter(c => c.user_id === uId);
+      return { rows: list };
+    }
+    if (norm.includes('c.id =') || norm.includes('c.id =')) {
+      const cId = parseInt(params[0]);
+      const complaint = mockState.complaints.find(c => c.id === cId);
+      if (complaint) {
+        const user = mockState.users.find(u => u.id === complaint.user_id);
+        const order = mockState.orders.find(o => o.id === complaint.order_id);
+        return { rows: [{ ...complaint, customer_name: user?.name, customer_email: user?.email, order_date: order?.created_at }] };
+      }
+      return { rows: [] };
+    }
+    if (norm.includes('where id =') || norm.includes('where c.id =')) {
+      const id = parseInt(params[0]);
+      const complaint = mockState.complaints.find(c => c.id === id);
+      return { rows: complaint ? [complaint] : [] };
+    }
+    // all complaints
+    const list = mockState.complaints.map(c => {
+      const user = mockState.users.find(u => u.id === c.user_id);
+      const order = mockState.orders.find(o => o.id === c.order_id);
+      return {
+        ...c,
+        customer_name: user?.name || 'Customer',
+        customer_email: user?.email || 'customer@example.com',
+        order_date: order?.created_at || new Date()
+      };
+    });
+    return { rows: list };
+  }
+
+  // INSERT INTO COMPLAINT_MESSAGES
+  if (norm.includes('insert into complaint_messages')) {
+    const [complaintId, senderId, message, fileId] = params;
+    const newMsg = {
+      id: mockState.complaint_messages.length + 1,
+      complaint_id: parseInt(complaintId),
+      sender_id: parseInt(senderId),
+      message: message || null,
+      file_id: fileId ? parseInt(fileId) : null,
+      created_at: new Date()
+    };
+    mockState.complaint_messages.push(newMsg);
+    saveMockState();
+    return { rows: [newMsg] };
+  }
+
+  // SELECT FROM COMPLAINT_MESSAGES
+  if (norm.includes('from complaint_messages')) {
+    const cId = parseInt(params[0]);
+    const list = mockState.complaint_messages.filter(m => m.complaint_id === cId).map(m => {
+      const user = mockState.users.find(u => u.id === m.sender_id);
+      const file = mockState.uploaded_files.find(f => f.id === m.file_id);
+      return {
+        ...m,
+        sender_name: user?.name || 'User',
+        sender_role: user?.role || 'user',
+        file_name: file?.filename || null,
+        file_type: file?.mime_type || null,
+        file_size: file?.size || null
+      };
+    });
+    return { rows: list };
+  }
+
+  // UPDATE COMPLAINTS STATUS
+  if (norm.includes('update complaints') && norm.includes('status =')) {
+    const status = params[0];
+    const id = parseInt(params[1]);
+    const complaint = mockState.complaints.find(c => c.id === id);
+    if (complaint) {
+      complaint.status = status;
+      saveMockState();
+    }
+    return { rows: complaint ? [complaint] : [] };
+  }
+
   return { rows: [] };
 }
 

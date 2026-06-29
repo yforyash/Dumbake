@@ -65,6 +65,13 @@ export default function AdminDashboard() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Complaints states
+  const [adminComplaints, setAdminComplaints] = useState([]);
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [emailBody, setEmailBody] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailStatus, setEmailStatus] = useState('');
+
   useEffect(() => {
     if (!user || user.role !== 'admin') {
       navigate('/login');
@@ -90,6 +97,14 @@ export default function AdminDashboard() {
 
       const enquiriesData = await fetchBulkEnquiries();
       setEnquiries(enquiriesData);
+
+      const complaintsRes = await fetch('/api/complaints/all', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (complaintsRes.ok) {
+        const complaintsData = await complaintsRes.json();
+        setAdminComplaints(Array.isArray(complaintsData) ? complaintsData : []);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -324,6 +339,12 @@ export default function AdminDashboard() {
             className={`dashboard-sidebar-item ${activeTab === 'enquiries' ? 'active' : ''}`}
           >
             <Users size={18} /> Bulk Enquiries ({enquiries.length})
+          </div>
+          <div 
+            onClick={() => setActiveTab('complaints')} 
+            className={`dashboard-sidebar-item ${activeTab === 'complaints' ? 'active' : ''}`}
+          >
+            <ShieldAlert size={18} /> Customer Complaints ({adminComplaints.length})
           </div>
         </aside>
 
@@ -718,6 +739,218 @@ export default function AdminDashboard() {
                     </tbody>
                   </table>
                 )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'complaints' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Customer Support Complaints</h3>
+                <span className="badge" style={{ backgroundColor: 'var(--accent-color)', color: 'var(--white)', padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderRadius: '12px' }}>
+                  {adminComplaints.length} Tickets Active
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: '1.5rem', minHeight: '500px' }} className="grid-2">
+                
+                {/* List of complaints */}
+                <div style={{
+                  background: 'var(--white)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '16px',
+                  padding: '1rem',
+                  overflowY: 'auto',
+                  maxHeight: '600px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', fontWeight: 'bold' }}>All Support Tickets</h4>
+                  
+                  {adminComplaints.length === 0 ? (
+                    <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>No complaints raised yet.</p>
+                  ) : (
+                    adminComplaints.map(c => (
+                      <div 
+                        key={c.id}
+                        onClick={() => {
+                          setSelectedComplaint(c);
+                          setEmailBody('');
+                          setEmailStatus('');
+                        }}
+                        style={{
+                          padding: '12px',
+                          borderRadius: '12px',
+                          border: `1.5px solid ${selectedComplaint?.id === c.id ? 'var(--accent-color)' : 'var(--border-color)'}`,
+                          backgroundColor: selectedComplaint?.id === c.id ? 'var(--primary-light)' : 'transparent',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>Ticket #{c.id}</span>
+                          <span className={`status-pill status-${c.status.toLowerCase()}`} style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
+                            {c.status}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.9rem', fontWeight: '800', marginBottom: '4px' }}>{c.subject}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          Customer: {c.customer_name}<br />
+                          Order: #{c.order_id} | Date: {new Date(c.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Complaint Details Panel */}
+                <div style={{
+                  background: 'var(--white)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '15px'
+                }}>
+                  {selectedComplaint ? (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid var(--border-color)', paddingBottom: '10px' }}>
+                        <div>
+                          <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '850', color: 'var(--accent-color)' }}>
+                            {selectedComplaint.subject}
+                          </h4>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            Customer: {selectedComplaint.customer_name} ({selectedComplaint.customer_email})
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <select 
+                            value={selectedComplaint.status}
+                            onChange={async (e) => {
+                              const newStatus = e.target.value;
+                              try {
+                                const response = await fetch(`/api/complaints/${selectedComplaint.id}/status`, {
+                                  method: 'POST',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                  },
+                                  body: JSON.stringify({ status: newStatus })
+                                });
+                                if (response.ok) {
+                                  const updated = await response.json();
+                                  setSelectedComplaint(updated);
+                                  setAdminComplaints(prev => prev.map(c => c.id === updated.id ? { ...c, status: updated.status } : c));
+                                }
+                              } catch (err) {
+                                console.error(err);
+                              }
+                            }}
+                            className="form-input"
+                            style={{ padding: '4px 10px', fontSize: '0.8rem', width: 'auto', margin: 0 }}
+                          >
+                            <option value="Open">Open</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                          </select>
+
+                          <button 
+                            onClick={() => navigate(`/support-chat/${selectedComplaint.id}`)}
+                            className="btn btn-primary"
+                            style={{ padding: '6px 12px', fontSize: '0.8rem', margin: 0 }}
+                          >
+                            💬 Open Chat Box
+                          </button>
+                        </div>
+                      </div>
+
+                      <div style={{ backgroundColor: 'var(--bg-color)', padding: '12px', borderRadius: '10px', fontSize: '0.9rem' }}>
+                        <strong>Description:</strong>
+                        <p style={{ margin: '6px 0 0 0', whiteSpace: 'pre-wrap', color: 'var(--text-muted)' }}>
+                          {selectedComplaint.description}
+                        </p>
+                      </div>
+
+                      {/* Direct Email form */}
+                      <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '15px' }}>
+                        <h5 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', fontWeight: '800' }}>📬 Reply via Direct Email</h5>
+                        
+                        {emailStatus && (
+                          <div style={{
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            backgroundColor: emailStatus.includes('success') ? '#E8F5E9' : '#FFF2F3',
+                            color: emailStatus.includes('success') ? '#2E7D32' : '#D80027',
+                            fontSize: '0.8rem',
+                            fontWeight: 'bold',
+                            marginBottom: '10px'
+                          }}>
+                            {emailStatus}
+                          </div>
+                        )}
+
+                        <textarea 
+                          placeholder="Type email body here... This will be sent directly to the customer's registered email inbox."
+                          value={emailBody}
+                          onChange={(e) => setEmailBody(e.target.value)}
+                          rows={6}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            borderRadius: '10px',
+                            border: '1.5px solid var(--border-color)',
+                            fontSize: '0.85rem',
+                            resize: 'vertical',
+                            marginBottom: '10px'
+                          }}
+                        />
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={async () => {
+                              if (!emailBody.trim()) return;
+                              setSendingEmail(true);
+                              setEmailStatus('');
+                              try {
+                                const response = await fetch(`/api/complaints/${selectedComplaint.id}/send-email`, {
+                                  method: 'POST',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                  },
+                                  body: JSON.stringify({ body: emailBody.trim() })
+                                });
+                                if (response.ok) {
+                                  setEmailStatus('Email successfully delivered to ' + selectedComplaint.customer_email + '!');
+                                  setEmailBody('');
+                                } else {
+                                  throw new Error('Failed to send email');
+                                }
+                              } catch (err) {
+                                setEmailStatus('Error sending email: ' + err.message);
+                              } finally {
+                                setSendingEmail(false);
+                              }
+                            }}
+                            disabled={sendingEmail || !emailBody.trim()}
+                            className="btn btn-primary"
+                            style={{ margin: 0 }}
+                          >
+                            {sendingEmail ? 'Sending...' : '📧 Send Email'}
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                      <ShieldAlert size={48} style={{ marginBottom: '10px', opacity: 0.5 }} />
+                      <p>Select a ticket from the left panel to manage complaint status, open the live support chat, or send direct email replies.</p>
+                    </div>
+                  )}
+                </div>
+
               </div>
             </div>
           )}

@@ -12,6 +12,7 @@ function getFileConfig(file) {
   if (ext === '.pdf') return { limit: limits.pdf, mime: mimeTypes.pdf };
   if (['.jpg', '.jpeg', '.png'].includes(ext)) return { limit: limits.image, mime: mimeTypes.image };
   if (ext === '.txt') return { limit: limits.text, mime: mimeTypes.text };
+  if (['.mp4', '.mov', '.avi', '.mkv'].includes(ext)) return { limit: limits.video, mime: mimeTypes.video };
   return null; // unsupported type
 }
 
@@ -34,7 +35,7 @@ function createUploader() {
     fileFilter,
     limits: {
       // apply generic max file size (largest) – individual size will be checked later
-      fileSize: Math.max(limits.pptx, limits.pdf, limits.image, limits.text),
+      fileSize: Math.max(limits.pptx, limits.pdf, limits.image, limits.text, limits.video),
     },
   }).single('file');
 }

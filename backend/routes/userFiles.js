@@ -61,11 +61,67 @@ router.post('/upload', verifyToken, (req, res, next) => {
 });
 
 /**
+ * POST /upload-raw
+ * Accept a single file, validate size/type, and store original file without running AI triage.
+ */
+router.post('/upload-raw', verifyToken, (req, res, next) => {
+  const uploader = createUploader();
+  uploader(req, res, async err => {
+    if (err) {
+      if (err instanceof require('multer').MulterError) {
+        return res.status(413).json({ error: err.message });
+      }
+      return next(err);
+    }
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    const { originalname, mimetype, size, buffer } = req.file;
+    try {
+      const cfg = getFileConfig(req.file);
+      if (size > cfg.limit) {
+        return res.status(413).json({ error: `File size exceeds the limit of ${cfg.limit / (1024 * 1024)} MB for this file type` });
+      }
+
+      const fileId = await storeFileMeta(req.user.id, originalname, mimetype, size, buffer);
+      res.json({ fileId, filename: originalname, size, mimeType: mimetype });
+    } catch (e) {
+      next(e);
+    }
+  });
+});
+
+/**
+ * GET /download/:fileId
+ * Securely returns any file type as an attachment (accessible to admin or the user who uploaded it)
+ */
+router.get('/download/:fileId', verifyToken, async (req, res, next) => {
+  const fileId = req.params.fileId;
+  try {
+    const result = await db.query('SELECT user_id, filename, mime_type, data FROM uploaded_files WHERE id = $1', [fileId]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'File not found' });
+    const { user_id, filename, mime_type, data } = result.rows[0];
+
+    // Access control: admin can access everything, users can only access their own uploaded files
+    const userRole = (req.user.role || '').toLowerCase();
+    if (userRole !== 'admin' && req.user.id !== user_id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    res.setHeader('Content-Type', mime_type);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * GET /download-admin-file/:fileId
  * Returns the stored file as an attachment (admin only)
  */
 router.get('/download-admin-file/:fileId', verifyToken, async (req, res, next) => {
-  if (req.user.role !== 'Admin') {
+  const userRole = (req.user.role || '').toLowerCase();
+  if (userRole !== 'admin') {
     return res.status(403).json({ error: 'Admin role required' });
   }
   const fileId = req.params.fileId;

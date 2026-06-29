@@ -12,6 +12,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import OwnerDashboard from './pages/OwnerDashboard';
 import OrderHistory from './pages/OrderHistory';
 import RiderConsole from './pages/RiderConsole';
+import SupportChat from './pages/SupportChat';
 import { fetchProfile, fetchAddresses } from './services/api';
 import { setUser, clearUser } from './store/slices/authSlice';
 import { setAddresses, setActiveAddress } from './store/slices/addressSlice';
@@ -107,6 +108,13 @@ export default function App() {
               path="/order-history" 
               element={
                 user ? <OrderHistory /> : <Navigate to="/login" />
+              } 
+            />
+
+            <Route 
+              path="/support-chat/:complaintId" 
+              element={
+                user ? <SupportChat /> : <Navigate to="/login" />
               } 
             />
             

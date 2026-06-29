@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { fetchOrders } from '../services/api';
@@ -171,6 +171,17 @@ export default function OrderHistory() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Complaints states
+  const [complaints, setComplaints] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [subject, setSubject] = useState('');
+  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [modalFile, setModalFile] = useState(null);
+  const fileInputRef = useRef(null);
+
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -185,6 +196,8 @@ export default function OrderHistory() {
         if (hasActive) {
           setOrders(data);
         }
+        // Poll complaints too
+        loadComplaintsSilently();
       } catch (err) {
         console.error('[Polling Error]', err);
       }
@@ -198,10 +211,132 @@ export default function OrderHistory() {
     try {
       const data = await fetchOrders();
       setOrders(data);
+      await loadComplaintsSilently();
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadComplaintsSilently = async () => {
+    try {
+      const response = await fetch('/api/complaints/my', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setComplaints(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('[Complaints Load Error]', err);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Check size limit by extension
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    let limitBytes = 0;
+    let limitLabel = '';
+
+    if (ext === '.pptx') {
+      limitBytes = 20 * 1024 * 1024;
+      limitLabel = '20 MB';
+    } else if (ext === '.pdf') {
+      limitBytes = 10 * 1024 * 1024;
+      limitLabel = '10 MB';
+    } else if (['.jpg', '.jpeg', '.png'].includes(ext)) {
+      limitBytes = 5 * 1024 * 1024;
+      limitLabel = '5 MB';
+    } else if (ext === '.txt') {
+      limitBytes = 2 * 1024 * 1024;
+      limitLabel = '2 MB';
+    } else if (['.mp4', '.mov', '.avi', '.mkv'].includes(ext)) {
+      limitBytes = 50 * 1024 * 1024;
+      limitLabel = '50 MB';
+    } else {
+      setError('Unsupported file type. Allowed: PPTX, PDF, JPG, PNG, TXT, MP4, MOV, AVI, MKV');
+      return;
+    }
+
+    if (file.size > limitBytes) {
+      setError(`File size exceeds limit of ${limitLabel} for ${ext.toUpperCase()} files.`);
+      return;
+    }
+
+    setError('');
+    setModalFile(file);
+  };
+
+  const handleSubmitComplaint = async (e) => {
+    e.preventDefault();
+    if (!subject.trim() || !description.trim()) {
+      setError('Subject and description are required.');
+      return;
+    }
+
+    setSubmitting(true);
+    setError('');
+
+    try {
+      let fileId = null;
+
+      // 1. Upload file if attached
+      if (modalFile) {
+        const formData = new FormData();
+        formData.append('file', modalFile);
+
+        const uploadRes = await fetch('/api/userfiles/upload-raw', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+          body: formData
+        });
+
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json();
+          throw new Error(errData.error || 'File upload failed');
+        }
+
+        const uploadData = await uploadRes.json();
+        fileId = uploadData.fileId;
+      }
+
+      // 2. Submit complaint
+      const response = await fetch('/api/complaints', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          orderId: selectedOrderId,
+          subject: subject.trim(),
+          description: description.trim(),
+          fileId
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Failed to submit complaint');
+      }
+
+      const newComplaint = await response.json();
+      setComplaints(prev => [newComplaint, ...prev]);
+      
+      // Reset & close
+      setShowModal(false);
+      setSelectedOrderId(null);
+      setSubject('');
+      setDescription('');
+      setModalFile(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -302,6 +437,62 @@ export default function OrderHistory() {
         {order.status !== 'Cancelled' && order.delivery_type === 'Delivery' && order.latitude && order.longitude && (
           <DeliveryTrackingMap order={order} />
         )}
+
+        {/* Support Complaint / Chat Section */}
+        <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--border-color)', paddingTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
+          {(() => {
+            const existing = complaints.find(c => c.order_id === order.id);
+            if (existing) {
+              return (
+                <button 
+                  onClick={() => navigate(`/support-chat/${existing.id}`)}
+                  style={{
+                    backgroundColor: '#FAF6EE',
+                    color: 'var(--accent-color)',
+                    border: '1.5px solid var(--accent-color)',
+                    padding: '8px 16px',
+                    borderRadius: '12px',
+                    fontSize: '0.85rem',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  💬 View Support Chat ({existing.status})
+                </button>
+              );
+            }
+            return (
+              <button 
+                onClick={() => {
+                  setSelectedOrderId(order.id);
+                  setError('');
+                  setSubject('');
+                  setDescription('');
+                  setModalFile(null);
+                  setShowModal(true);
+                }}
+                style={{
+                  backgroundColor: 'var(--text-color)',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '12px',
+                  fontSize: '0.85rem',
+                  fontWeight: '750',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                ⚠️ Raise Complaint
+              </button>
+            );
+          })()}
+        </div>
       </div>
     );
   };
@@ -388,6 +579,133 @@ export default function OrderHistory() {
             </div>
           )}
 
+        </div>
+      )}
+
+      {/* Raise Complaint Modal */}
+      {showModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '24px',
+            width: '100%',
+            maxWidth: '500px',
+            padding: '2rem',
+            boxShadow: 'var(--shadow-lg)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '15px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontFamily: 'var(--font-serif)', color: 'var(--accent-color)', fontSize: '1.4rem' }}>
+                Raise Support Ticket
+              </h3>
+              <button 
+                onClick={() => { setShowModal(false); setSelectedOrderId(null); }}
+                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}
+              >
+                &times;
+              </button>
+            </div>
+
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Describe the issue with your Order #{selectedOrderId}. You can upload a photo of the food, the bill, or any document to help us understand.
+            </p>
+
+            {error && (
+              <div style={{ backgroundColor: '#FFF2F3', color: '#D80027', padding: '8px 12px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                ⚠️ {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmitComplaint} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '4px' }}>Subject</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g., Damaged brookies, wrong item delivered"
+                  value={subject}
+                  onChange={e => setSubject(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1.5px solid var(--border-color)', fontSize: '0.9rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '4px' }}>Description</label>
+                <textarea 
+                  placeholder="Provide details about the issue..."
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  required
+                  rows={4}
+                  style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1.5px solid var(--border-color)', fontSize: '0.9rem', resize: 'vertical' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '4px' }}>Attach File (Optional)</label>
+                <input 
+                  type="file" 
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  style={{ display: 'none' }}
+                />
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <button 
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '10px',
+                      border: '1.5px solid var(--border-color)',
+                      backgroundColor: '#FFFFFF',
+                      fontSize: '0.8rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    📎 Choose File
+                  </button>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {modalFile ? modalFile.name : 'No file chosen'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Limits: Images (5MB) | Video (50MB) | PDF (10MB) | PPT (20MB) | TXT (2MB)
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => { setShowModal(false); setSelectedOrderId(null); }}
+                  style={{ padding: '10px 20px', borderRadius: '12px', border: '1.5px solid var(--border-color)', background: '#FFFFFF', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={submitting}
+                  style={{ padding: '10px 20px', borderRadius: '12px', border: 'none', background: 'var(--accent-color)', color: '#FFFFFF', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}
+                >
+                  {submitting ? 'Submitting...' : 'Submit Complaint'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
