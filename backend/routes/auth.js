@@ -124,7 +124,13 @@ router.post('/login', rateLimiter.authLimiter, async (req, res, next) => {
     if (!user) return res.status(401).json({ error: 'Invalid email or password' });
     
     // Compare password hashes
-    const match = await bcrypt.compare(passwordHash, user.password_hash);
+    let match = false;
+    if (user.password_hash && (user.password_hash.startsWith('$2b$') || user.password_hash.startsWith('$2a$'))) {
+      match = await bcrypt.compare(passwordHash, user.password_hash);
+    } else {
+      // Fallback check for legacy SHA-256 hash string (like admin account)
+      match = (passwordHash === user.password_hash);
+    }
     if (!match) return res.status(401).json({ error: 'Invalid email or password' });
 
     if (!user.is_verified) {
