@@ -140,20 +140,29 @@ router.get('/', authenticate, async (req, res) => {
 
     let result;
     if (req.user.role === 'admin') {
-      
       result = await query('SELECT * FROM orders ORDER BY created_at DESC');
     } else {
-      
       result = await query('SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
     }
-    
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.put('/:id/status', authenticate, requireRole(['admin']), async (req, res) => {
+router.get('/history', authenticate, async (req, res) => {
+  try {
+    if (req.user.role === 'anonymous') {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const result = await query('SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const handleStatusUpdate = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, payment_status } = req.body;
@@ -173,7 +182,6 @@ router.put('/:id/status', authenticate, requireRole(['admin']), async (req, res)
       updateSql += `, payment_status = $${paramIndex}`;
       params.push(payment_status);
       paramIndex++;
-
     }
 
     updateSql += ` WHERE id = $${paramIndex} RETURNING *`;
@@ -192,7 +200,10 @@ router.put('/:id/status', authenticate, requireRole(['admin']), async (req, res)
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+};
+
+router.put('/:id/status', authenticate, requireRole(['admin']), handleStatusUpdate);
+router.put('/:id', authenticate, requireRole(['admin']), handleStatusUpdate);
 
 router.post('/bulk-enquiry', async (req, res) => {
   try {
